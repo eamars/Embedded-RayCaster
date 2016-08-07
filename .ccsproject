@@ -12,5 +12,5 @@
 	<templateProperties value="id=com.ti.common.project.core.emptyProjectWithMainTemplate,"/>
 	<filesToOpen value="main.c,"/>
 	<isTargetManual value="true"/>
-	<origin value="C:/Users/rba90/Downloads/rba90"/>
+	<origin value="C:/Users/rba90/workspace/Embedded-RayCaster"/>
 </projectOptions>
