@@ -227,7 +227,7 @@ void RayCaster(void *args)
 
 	uint8_t ence463_block[texWidth * texHeight] = {
 			10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10,
-			10, 5 , 5 , 5 , 10, 5 , 10, 5 , 10, 10, 5  , 10, 5 , 5 , 5 , 10,
+			10, 5 , 5 , 5 , 10, 5 , 10, 5 , 10, 10, 5 , 10, 5 , 5 , 5 , 10,
 			10, 5 , 10, 10, 10, 5 , 5 , 5 , 10, 5 , 10, 10, 5 , 10, 10, 10,
 			10, 5 , 5 , 5 , 10, 5 , 5 , 5 , 10, 5 , 10, 10, 5 , 5 , 5 , 10,
 			10, 5 , 10, 10, 10, 5 , 10, 5 , 10, 5 , 10, 10, 5 , 10, 10, 10,
@@ -641,7 +641,7 @@ void RayCaster(void *args)
 		xSemaphoreGive(screenUpdateEvent);
 
 		// run this task at precisely at 100Hz
-		vTaskDelayUntil(&xLastWakeTime, (10 / portTICK_RATE_MS));
+		vTaskDelayUntil(&xLastWakeTime, (50 / portTICK_RATE_MS));
 	}
 }
 
