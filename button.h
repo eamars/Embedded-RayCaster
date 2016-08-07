@@ -19,7 +19,7 @@ enum button_type {
 	BUTTON_DOWN,
 	BUTTON_LEFT,
 	BUTTON_RIGHT,
-	BUTTON_SELECT
+	BUTTON_SELECT,
 };
 
 typedef struct

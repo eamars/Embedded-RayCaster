@@ -66,6 +66,18 @@
 #define texWidth 16
 #define texHeight 16
 
+typedef enum
+{
+	TEXTURE_BRICK = 0,
+	TEXTURE_GRID,
+	TEXTURE_CROSS,
+	TEXTURE_ENCE463,
+	TEXTURE_STONE_BRICK,
+	TEXTURE_STONE_BRICK_CARVED,
+	TEXTURE_NETHER_BRICK,
+	TEXTURE_GREYSTONE
+} Texture_t;
+
 typedef struct
 {
 	void *arg0;
@@ -190,6 +202,7 @@ void RayCaster(void *args)
 
 	// button
 	int8_t button;
+	bool renderEnvironment = true;
 
 	// variables about ray casting
 	float posX = 10.0f;
@@ -197,7 +210,7 @@ void RayCaster(void *args)
 	float dirX = -1.0f;
 	float dirY = 0.0f;		// initial direction vector
 	float planeX = 0.0f;
-	float planeY = 0.66f;	// 2d raycaster version of camera plane
+	float planeY = 0.6666f;	// 2d raycaster version of camera plane
 
 	// measure framerate
 	portTickType time = 0;
@@ -205,17 +218,6 @@ void RayCaster(void *args)
 
 	// iterative variable
 	int x, y;
-
-	// generate texture
-	uint8_t texture[8][texWidth * texHeight];
-	for (x = 0; x < texWidth; x++)
-	{
-		for (y = 0; y < texHeight; y++)
-		{
-			texture[1][texWidth * y + x] = 10 * (x != y && x != texWidth - y); 		// horizontal and vertical grid
-			texture[2][texWidth * y + x] = 10 * (x % 4 && y % 4);					// black cross
-		}
-	}
 
 	uint8_t ence463_block[texWidth * texHeight] = {
 			10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10,
@@ -297,29 +299,63 @@ void RayCaster(void *args)
 
 	uint8_t brick[texWidth * texHeight] =
 	{
-			7, 6, 6, 6, 5, 7, 7, 7, 7, 7, 7, 6, 5, 7, 7, 6,
-			6, 6, 6, 5, 5, 7, 7, 6, 7, 6, 6, 6, 5, 7, 6, 6,
-			4, 6, 5, 4, 4, 6, 6, 6, 6, 6, 6, 6, 4, 6, 5, 6,
-			4, 5, 4, 4, 5, 6, 5, 5, 4, 5, 4, 4, 5, 6, 5, 5,
-			5, 7, 7, 6, 7, 6, 6, 6, 5, 7, 7, 6, 7, 6, 6, 6,
-			5, 7, 6, 6, 6, 6, 6, 5, 5, 7, 6, 6, 6, 6, 6, 5,
-			4, 6, 5, 6, 4, 6, 5, 4, 4, 6, 5, 6, 4, 6, 5, 4,
-			5, 6, 5, 5, 4, 5, 4, 4, 5, 6, 5, 5, 4, 5, 4, 4,
-			6, 6, 6, 5, 5, 7, 7, 6, 7, 6, 6, 6, 5, 7, 6, 6,
-			6, 5, 5, 4, 5, 7, 6, 6, 6, 6, 6, 5, 5, 6, 6, 5,
-			3, 5, 4, 3, 4, 6, 5, 6, 4, 6, 5, 4, 4, 5, 4, 5,
-			4, 5, 4, 4, 5, 6, 5, 5, 4, 5, 4, 4, 5, 6, 5, 5,
-			5, 7, 7, 6, 7, 6, 6, 6, 5, 7, 7, 6, 7, 6, 6, 6,
-			5, 7, 6, 6, 6, 6, 6, 5, 5, 7, 6, 6, 6, 6, 6, 5,
-			4, 6, 5, 6, 4, 6, 5, 4, 4, 6, 5, 6, 4, 6, 5, 4,
-			5, 6, 5, 5, 4, 5, 4, 4, 5, 6, 5, 5, 4, 5, 4, 4
+			3, 4, 4, 2, 4, 3, 4, 4, 3, 2, 4, 4, 3, 3, 3, 3,
+			4, 4, 3, 2, 5, 4, 4, 4, 4, 2, 4, 4, 4, 4, 4, 3,
+			2, 2, 2, 1, 2, 2, 2, 2, 2, 1, 2, 2, 2, 2, 2, 2,
+			5, 4, 4, 4, 3, 5, 5, 4, 4, 4, 4, 4, 5, 2, 5, 5,
+			3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 1, 4, 3,
+			3, 3, 3, 3, 3, 3, 3, 2, 3, 3, 3, 3, 3, 3, 3, 2,
+			4, 4, 4, 4, 4, 4, 3, 3, 4, 4, 4, 3, 4, 4, 4, 2,
+			3, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2,
+			5, 5, 3, 3, 5, 4, 4, 4, 4, 4, 3, 4, 5, 4, 4, 4,
+			3, 3, 2, 3, 4, 3, 3, 3, 3, 3, 3, 4, 4, 4, 4, 3,
+			3, 3, 3, 3, 3, 3, 3, 3, 2, 3, 3, 3, 3, 3, 3, 2,
+			4, 4, 4, 4, 3, 4, 4, 3, 3, 4, 3, 4, 3, 4, 4, 2,
+			2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2,
+			4, 4, 4, 4, 2, 4, 4, 4, 4, 4, 4, 3, 4, 4, 4, 4,
+			4, 3, 4, 4, 2, 4, 4, 3, 3, 3, 3, 2, 3, 3, 4, 3,
+			2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 1, 1, 2, 2, 2, 2
 	};
 
-	memcpy(texture[3], ence463_block, texWidth * texHeight);
-	memcpy(texture[4], stone_brick, texWidth * texHeight);
-	memcpy(texture[5], stone_brick_carved, texWidth * texHeight);
-	memcpy(texture[6], nether_brick, texWidth * texHeight);
-	memcpy(texture[0], brick, texWidth * texHeight);
+	uint8_t greystone[texWidth * texHeight] =
+	{
+			2, 2, 2, 5, 5, 5, 3, 3, 4, 4, 2, 3, 3, 3, 2, 2,
+			5, 4, 3, 5, 5, 4, 3, 3, 4, 4, 1, 4, 5, 5, 5, 5,
+			3, 2, 2, 5, 4, 4, 3, 1, 2, 2, 2, 4, 4, 4, 3, 3,
+			1, 1, 2, 5, 4, 4, 3, 2, 5, 5, 2, 2, 1, 1, 1, 1,
+			5, 4, 2, 4, 4, 3, 2, 2, 4, 3, 2, 4, 3, 5, 5, 5,
+			4, 4, 1, 3, 2, 1, 2, 3, 3, 3, 1, 5, 2, 5, 4, 4,
+			3, 2, 1, 5, 4, 2, 5, 5, 5, 4, 2, 5, 2, 2, 2, 3,
+			3, 4, 3, 5, 4, 2, 5, 4, 4, 4, 2, 5, 2, 3, 3, 2,
+			5, 4, 3, 5, 4, 2, 5, 4, 4, 3, 2, 5, 3, 4, 4, 3,
+			5, 4, 3, 5, 4, 1, 3, 3, 2, 1, 1, 2, 2, 2, 2, 2,
+			5, 4, 2, 4, 4, 2, 2, 4, 4, 4, 5, 5, 5, 5, 5, 2,
+			4, 3, 2, 4, 4, 2, 2, 5, 4, 4, 5, 4, 4, 4, 4, 2,
+			2, 2, 1, 1, 1, 1, 1, 4, 3, 4, 4, 4, 4, 4, 4, 2,
+			4, 5, 5, 4, 4, 4, 4, 4, 2, 1, 1, 1, 1, 1, 1, 1,
+			4, 3, 3, 3, 3, 3, 3, 3, 1, 5, 5, 3, 4, 4, 4, 3,
+			2, 1, 1, 1, 1, 1, 1, 1, 1, 2, 2, 2, 2, 2, 2, 2
+	};
+
+	// generate texture
+	uint8_t texture[8][texWidth * texHeight];
+	for (x = 0; x < texWidth; x++)
+	{
+		for (y = 0; y < texHeight; y++)
+		{
+			texture[TEXTURE_GRID][texWidth * y + x] = 10 * (x != y && x != texWidth - y); 		// horizontal and vertical grid
+			texture[TEXTURE_CROSS][texWidth * y + x] = 10 * (x % 4 && y % 4);					// black cross
+		}
+	}
+
+	// copy custom texture
+	memcpy(texture[TEXTURE_BRICK], brick, texWidth * texHeight);
+	memcpy(texture[TEXTURE_ENCE463], ence463_block, texWidth * texHeight);
+	memcpy(texture[TEXTURE_STONE_BRICK], stone_brick, texWidth * texHeight);
+	memcpy(texture[TEXTURE_STONE_BRICK_CARVED], stone_brick_carved, texWidth * texHeight);
+	memcpy(texture[TEXTURE_NETHER_BRICK], nether_brick, texWidth * texHeight);
+	memcpy(texture[TEXTURE_GREYSTONE], greystone, texWidth * texHeight);
+
 
 	// initialize the task tick handler
 	xLastWakeTime = xTaskGetTickCount();
@@ -437,69 +473,68 @@ void RayCaster(void *args)
 				// make color darker for y-side
 				if (side == 1)
 				{
-					color /= 2;
+					color >>= 1;
 				}
 
 				// set pixel
 				ScreenSetPixel(1, x, y, color);
 			}
 
-
-			// floor casting
-			float floorXWall, floorYWall;		//x, y position of the floor texel at the bottom of the wall
-
-			// 4 different wall directions possible
-			if (side == 0 && rayDirX > 0)
+			if (renderEnvironment)
 			{
-				floorXWall = mapX;
-				floorYWall = mapY + wallX;
+				// floor casting
+				float floorXWall, floorYWall;		//x, y position of the floor texel at the bottom of the wall
+
+				// 4 different wall directions possible
+				if (side == 0 && rayDirX > 0)
+				{
+					floorXWall = mapX;
+					floorYWall = mapY + wallX;
+				}
+				else if (side == 0 && rayDirX < 0)
+				{
+					floorXWall = mapX + 1.0;
+					floorYWall = mapY = wallX;
+				}
+				else if (side == 1 && rayDirY > 0)
+				{
+					floorXWall = mapX + wallX;
+					floorYWall = mapY;
+				}
+				else
+				{
+					floorXWall = mapX + wallX;
+					floorYWall = mapY + 1.0;
+				}
+
+				float distWall, distPlayer, currentDist;
+				distWall = perpWallDist;
+				distPlayer = 0.0;
+
+				// become > 0 when the integer overflows
+				if (drawEnd < 0) drawEnd = screenHeight;
+
+				// draw the floor from drawEnd to the bottom of the screen
+				for (y = drawEnd + 1; y < screenHeight; y++)
+				{
+					currentDist = screenHeight / (2.0 * y - screenHeight);	// small lookup table can be used instead
+
+					float weight = (currentDist - distPlayer) / (distWall - distPlayer);
+
+					float currentFloorX = weight * floorXWall + (1.0 - weight) * posX;
+					float currentFloorY = weight * floorYWall + (1.0 - weight) * posY;
+
+					int floorTexX, floorTexY;
+					floorTexX = (int) (currentFloorX * texWidth) % texWidth;
+					floorTexY = (int) (currentFloorY * texHeight) % texHeight;
+
+					// floor
+					ScreenSetPixel(1, x, y, texture[TEXTURE_STONE_BRICK][texWidth * floorTexY + floorTexX] >> 1);
+
+					// ceiling
+					ScreenSetPixel(1, x, screenHeight - y, texture[TEXTURE_GREYSTONE][texWidth * floorTexY + floorTexX]);
+				}
 			}
-			else if (side == 0 && rayDirX < 0)
-			{
-				floorXWall = mapX + 1.0;
-				floorYWall = mapY = wallX;
-			}
-			else if (side == 1 && rayDirY > 0)
-			{
-				floorXWall = mapX + wallX;
-				floorYWall = mapY;
-			}
-			else
-			{
-				floorXWall = mapX + wallX;
-				floorYWall = mapY + 1.0;
-			}
-
-			float distWall, distPlayer, currentDist;
-			distWall = perpWallDist;
-			distPlayer = 0.0;
-
-			// become > 0 when the integer overflows
-			if (drawEnd < 0) drawEnd = screenHeight;
-
-			// draw the floor from drawEnd to the bottom of the screen
-			for (y = drawEnd + 1; y < screenHeight; y++)
-			{
-				currentDist = screenHeight / (2.0 * y - screenHeight);	// small lookup table can be used instead
-
-				float weight = (currentDist - distPlayer) / (distWall - distPlayer);
-
-				float currentFloorX = weight * floorXWall + (1.0 - weight) * posX;
-				float currentFloorY = weight * floorYWall + (1.0 - weight) * posY;
-
-				int floorTexX, floorTexY;
-				floorTexX = (int) (currentFloorX * texWidth) % texWidth;
-				floorTexY = (int) (currentFloorY * texHeight) % texHeight;
-
-				// floor
-				ScreenSetPixel(1, x, y, texture[4][texWidth * floorTexY + floorTexX] / 2);
-
-				// ceiling
-				ScreenSetPixel(1, x, screenHeight - y, texture[6][texWidth * floorTexY + floorTexX]);
-
-
-			}
-
 		}
 
 		// timing for input and FPS counter
@@ -513,7 +548,7 @@ void RayCaster(void *args)
 		sprintf(textBuffer, "X:%d Y:%d (%d,%d)", (int)posX, (int)posY, (int)(dirX * 57.296f),  (int)(dirY * 57.296f));
 		ScreenPrintStr(1, textBuffer, strlen(textBuffer), 0, 88, FONT_6x8, 15);
 
-		float frameTimeS = frameTime / 1000.0f;
+		// float frameTimeS = frameTime / 1000.0f;
 
 		// speed modifier
 		float moveSpeed = 0.2;
@@ -526,6 +561,7 @@ void RayCaster(void *args)
 			{
 				case BUTTON_SELECT:
 				{
+					renderEnvironment = !renderEnvironment;
 					break;
 				}
 				case BUTTON_UP:
