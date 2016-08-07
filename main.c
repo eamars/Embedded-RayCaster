@@ -339,6 +339,8 @@ void RayCaster(void *args)
 
 	// generate texture
 	uint8_t texture[8][texWidth * texHeight];
+	memset(texture, 0x0, sizeof(texture));
+
 	for (x = 0; x < texWidth; x++)
 	{
 		for (y = 0; y < texHeight; y++)
@@ -362,7 +364,9 @@ void RayCaster(void *args)
 
 	while (1)
 	{
+		// clear the old frame before drawing
 		ScreenClearFrameBuffer(1);
+
 		for (x = 0; x < screenWidth; x++)
 		{
 			// calculate ray position and direction
@@ -381,8 +385,8 @@ void RayCaster(void *args)
 			float sideDistY;
 
 			// length of ray from one x or y-side to next x or y-side
-			float deltaDistX = sqrt(1 + (rayDirY * rayDirY) / (rayDirX * rayDirX));
-			float deltaDistY = sqrt(1 + (rayDirX * rayDirX) / (rayDirY * rayDirY));
+			float deltaDistX = sqrtf(1 + (rayDirY * rayDirY) / (rayDirX * rayDirX));
+			float deltaDistY = sqrtf(1 + (rayDirX * rayDirX) / (rayDirY * rayDirY));
 			float perpWallDist;
 
 			// what direction to step in x or y-direction, either + 1 or -1
@@ -401,7 +405,7 @@ void RayCaster(void *args)
 			else
 			{
 				stepX = 1;
-				sideDistX = (mapX + 1.0 - rayPosX) * deltaDistX;
+				sideDistX = (mapX + 1.0f - rayPosX) * deltaDistX;
 			}
 
 			if (rayDirY < 0)
@@ -412,7 +416,7 @@ void RayCaster(void *args)
 			else
 			{
 				stepY = 1;
-				sideDistY = (mapY + 1.0 - rayPosY) * deltaDistY;
+				sideDistY = (mapY + 1.0f - rayPosY) * deltaDistY;
 			}
 
 			// perform DDA
@@ -468,6 +472,7 @@ void RayCaster(void *args)
 			{
 				int d = y * 256 - screenHeight * 128 + lineHeight * 128;
 				int texY = ((d * texHeight) / lineHeight) / 256;
+
 				uint8_t color = texture[texNum][texHeight * texY + texX];
 
 				// make color darker for y-side
@@ -493,40 +498,41 @@ void RayCaster(void *args)
 				}
 				else if (side == 0 && rayDirX < 0)
 				{
-					floorXWall = mapX + 1.0;
-					floorYWall = mapY = wallX;
+					floorXWall = mapX + 1.0f;
+					floorYWall = mapY + wallX;
 				}
 				else if (side == 1 && rayDirY > 0)
 				{
 					floorXWall = mapX + wallX;
 					floorYWall = mapY;
 				}
-				else
+				else if (side == 1 && rayDirY < 0)
 				{
 					floorXWall = mapX + wallX;
-					floorYWall = mapY + 1.0;
+					floorYWall = mapY + 1.0f;
 				}
 
 				float distWall, distPlayer, currentDist;
+
 				distWall = perpWallDist;
-				distPlayer = 0.0;
+				distPlayer = 0.0f;
 
 				// become > 0 when the integer overflows
-				if (drawEnd < 0) drawEnd = screenHeight;
+				if (drawEnd < 0) drawEnd = screenHeight - 1;
 
 				// draw the floor from drawEnd to the bottom of the screen
-				for (y = drawEnd + 1; y < screenHeight; y++)
+				for (y = drawEnd; y < screenHeight; y++)
 				{
-					currentDist = screenHeight / (2.0 * y - screenHeight);	// small lookup table can be used instead
+					currentDist = screenHeight / (2.0f * y - screenHeight);	// small lookup table can be used instead
 
 					float weight = (currentDist - distPlayer) / (distWall - distPlayer);
 
-					float currentFloorX = weight * floorXWall + (1.0 - weight) * posX;
-					float currentFloorY = weight * floorYWall + (1.0 - weight) * posY;
+					float currentFloorX = weight * floorXWall + (1.0f - weight) * posX;
+					float currentFloorY = weight * floorYWall + (1.0f - weight) * posY;
 
 					int floorTexX, floorTexY;
-					floorTexX = (int) (currentFloorX * texWidth) % texWidth;
-					floorTexY = (int) (currentFloorY * texHeight) % texHeight;
+					floorTexX = ((int) (currentFloorX * texWidth)) % texWidth;
+					floorTexY = ((int) (currentFloorY * texHeight)) % texHeight;
 
 					// floor
 					ScreenSetPixel(1, x, y, texture[TEXTURE_STONE_BRICK][texWidth * floorTexY + floorTexX] >> 1);
@@ -541,11 +547,11 @@ void RayCaster(void *args)
 		oldTime = time;
 		time = xTaskGetTickCount();
 		portTickType frameTime = (time - oldTime) * portTICK_RATE_MS;
-		sprintf(textBuffer, "FPS:%d", 1000 / frameTime);
+		sprintf(textBuffer, "FPS:%d PL:(%d,%d)", 1000 / frameTime, (int)(planeX * 57.296f), (int)(planeY * 57.296f));
 		ScreenPrintStr(1, textBuffer, strlen(textBuffer), 0, 0, FONT_6x8, 15);
 
 		// position
-		sprintf(textBuffer, "X:%d Y:%d (%d,%d)", (int)posX, (int)posY, (int)(dirX * 57.296f),  (int)(dirY * 57.296f));
+		sprintf(textBuffer, "X:%d Y:%d DI:(%d,%d)", (int)posX, (int)posY, (int)(dirX * 57.296f),  (int)(dirY * 57.296f));
 		ScreenPrintStr(1, textBuffer, strlen(textBuffer), 0, 88, FONT_6x8, 15);
 
 		// float frameTimeS = frameTime / 1000.0f;
