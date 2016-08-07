@@ -63,6 +63,9 @@
 #define screenWidth 128
 #define screenHeight 96
 
+#define texWidth 16
+#define texHeight 16
+
 typedef struct
 {
 	void *arg0;
@@ -81,11 +84,11 @@ int worldMap[mapWidth][mapHeight]=
 	{1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1},
 	{1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1},
 	{1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1},
-	{1,0,0,0,0,0,4,4,4,4,4,0,0,0,0,4,0,4,0,4,0,0,0,1},
-	{1,0,0,0,0,0,4,0,0,0,4,0,0,0,0,0,0,0,0,0,0,0,0,1},
-	{1,0,0,0,0,0,4,0,0,0,4,0,0,0,0,4,0,0,0,4,0,0,0,1},
-	{1,0,0,0,0,0,4,0,0,0,4,0,0,0,0,0,0,0,0,0,0,0,0,1},
-	{1,0,0,0,0,0,4,4,0,4,4,0,0,0,0,4,0,4,0,4,0,0,0,1},
+	{1,0,0,0,0,0,5,5,5,5,5,0,0,0,0,2,0,2,0,2,0,0,0,1},
+	{1,0,0,0,0,0,5,0,0,0,5,0,0,0,0,0,0,0,0,0,0,0,0,1},
+	{1,0,0,0,0,0,5,0,0,0,5,0,0,0,0,3,0,0,0,2,0,0,0,1},
+	{1,0,0,0,0,0,5,0,0,0,5,0,0,0,0,0,0,0,0,0,0,0,0,1},
+	{1,0,0,0,0,0,5,5,0,5,5,0,0,0,0,6,0,5,0,4,0,0,0,1},
 	{1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1},
 	{1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1},
 	{1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1},
@@ -93,13 +96,13 @@ int worldMap[mapWidth][mapHeight]=
 	{1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1},
 	{1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1},
 	{1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1},
-	{1,4,4,4,4,4,4,4,4,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1},
-	{1,4,0,4,0,0,0,0,4,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1},
-	{1,4,0,0,0,0,5,0,4,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1},
-	{1,4,0,4,0,0,0,0,4,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1},
-	{1,4,0,4,4,4,4,4,4,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1},
-	{1,4,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1},
-	{1,4,4,4,4,4,4,4,4,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1},
+	{1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1},
+	{1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1},
+	{1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1},
+	{1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1},
+	{1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1},
+	{1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1},
+	{1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1},
 	{1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1}
 };
 
@@ -183,24 +186,140 @@ void RayCaster(void *args)
 	portTickType xLastWakeTime;
 
 	// string
-	char textBuffer[16];
+	char textBuffer[32];
 
 	// button
 	int8_t button;
 
 	// variables about ray casting
-	float posX = 22;
-	float posY = 12; 		// starting position
-	float dirX = -1;
-	float dirY = 0;		// initial direction vector
-	float planeX = 0;
-	float planeY = 0.66;	// 2d raycaster version of camera plane
+	float posX = 10.0f;
+	float posY = 14.0f; 		// starting position
+	float dirX = -1.0f;
+	float dirY = 0.0f;		// initial direction vector
+	float planeX = 0.0f;
+	float planeY = 0.66f;	// 2d raycaster version of camera plane
 
 	// measure framerate
 	portTickType time = 0;
 	portTickType oldTime = 0;
 
-	int x;
+	// iterative variable
+	int x, y;
+
+	// generate texture
+	uint8_t texture[8][texWidth * texHeight];
+	for (x = 0; x < texWidth; x++)
+	{
+		for (y = 0; y < texHeight; y++)
+		{
+			texture[1][texWidth * y + x] = 10 * (x != y && x != texWidth - y); 		// horizontal and vertical grid
+			texture[2][texWidth * y + x] = 10 * (x % 4 && y % 4);					// black cross
+		}
+	}
+
+	uint8_t ence463_block[texWidth * texHeight] = {
+			10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10,
+			10, 5 , 5 , 5 , 10, 5 , 10, 5 , 10, 10, 5  , 10, 5 , 5 , 5 , 10,
+			10, 5 , 10, 10, 10, 5 , 5 , 5 , 10, 5 , 10, 10, 5 , 10, 10, 10,
+			10, 5 , 5 , 5 , 10, 5 , 5 , 5 , 10, 5 , 10, 10, 5 , 5 , 5 , 10,
+			10, 5 , 10, 10, 10, 5 , 10, 5 , 10, 5 , 10, 10, 5 , 10, 10, 10,
+			10, 5 , 5 , 5 , 10, 5 , 10, 5 , 10, 10, 5 , 10, 5 , 5 , 5 , 10,
+			10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10,
+			10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10,
+			10, 5 , 10, 5 , 10, 10, 5 , 5 , 10, 5 , 5 , 10, 10, 10, 10, 10,
+			10, 5 , 10, 5 , 10, 5 , 10, 10, 10, 10, 10, 5 , 10, 10, 10, 10,
+			10, 5 , 5 , 5 , 10, 5 , 5 , 5 , 10, 5 , 5 , 10, 10, 10, 10, 10,
+			10, 10, 10, 5 , 10, 5 , 10, 5 , 10, 10, 10, 5 , 10, 10, 10, 10,
+			10, 10, 10, 5 , 10, 5 , 5 , 5 , 10, 5 , 5 , 10, 10, 10, 10, 10,
+			10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10,
+			10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10,
+			10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10
+	};
+
+	uint8_t stone_brick[texWidth * texHeight] = {
+			15, 13, 13, 13, 15, 15, 15, 15, 13, 13, 13, 13, 13, 13, 15, 13,
+			13, 11, 13, 13, 13, 13, 11, 11, 11, 11, 11, 11, 13, 13, 13, 6,
+			13, 13, 11, 13, 13, 11, 11, 11, 11, 11, 13, 13, 13, 13, 11, 4,
+			13, 13, 11, 11, 13, 11, 13, 13, 11, 13, 13, 11, 11, 11, 11, 6,
+			13, 11, 11, 11, 13, 13, 11, 11, 11, 11, 13, 11, 11, 13, 11, 6,
+			13, 13, 13, 13, 11, 11, 11, 11, 11, 13, 13, 11, 13, 11, 11, 6,
+			15, 13, 13, 11, 11, 11, 13, 13, 13, 11, 11, 11, 11, 11, 11, 6,
+			11, 6, 6, 4, 6, 6, 6, 6, 6, 6, 4, 6, 6, 6, 6, 4,
+			13, 15, 15, 13, 15, 15, 13, 11, 15, 13, 13, 15, 15, 13, 13, 13,
+			11, 11, 13, 13, 13, 11, 11, 6, 13, 11, 13, 13, 13, 11, 11, 11,
+			13, 13, 11, 11, 13, 11, 11, 6, 15, 13, 13, 11, 11, 11, 13, 11,
+			13, 11, 11, 11, 11, 13, 13, 6, 15, 11, 11, 11, 13, 13, 13, 11,
+			11, 11, 11, 13, 13, 11, 13, 6, 13, 11, 13, 13, 13, 11, 13, 13,
+			11, 11, 11, 13, 13, 13, 11, 6, 13, 13, 13, 11, 13, 13, 11, 11,
+			11, 11, 13, 13, 11, 11, 11, 6, 13, 11, 13, 13, 11, 11, 11, 11,
+			6, 6, 6, 4, 4, 6, 6, 4, 11, 6, 6, 6, 6, 6, 6, 6
+	};
+
+	uint8_t stone_brick_carved[texWidth * texHeight] =
+	{
+			15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 13, 15, 15, 15, 13,
+			13, 11, 13, 11, 11, 11, 11, 11, 11, 9, 11, 11, 11, 11, 11, 6,
+			8, 6, 6, 6, 6, 4, 4, 4, 6, 6, 6, 8, 6, 8, 11, 4,
+			15, 15, 15, 13, 15, 15, 15, 15, 15, 15, 15, 15, 11, 13, 9, 6,
+			15, 11, 9, 11, 11, 11, 11, 11, 11, 11, 11, 9, 4, 15, 11, 8,
+			13, 11, 6, 8, 6, 4, 4, 4, 6, 6, 13, 11, 6, 13, 11, 4,
+			15, 11, 6, 13, 15, 13, 15, 15, 15, 6, 13, 11, 6, 13, 11, 8,
+			15, 11, 4, 13, 6, 6, 9, 6, 13, 4, 13, 11, 6, 15, 11, 6,
+			13, 11, 9, 15, 6, 9, 11, 13, 11, 6, 15, 11, 9, 15, 11, 4,
+			15, 11, 8, 15, 4, 6, 4, 6, 6, 6, 15, 13, 6, 13, 11, 4,
+			15, 11, 6, 15, 13, 15, 15, 15, 15, 15, 13, 11, 4, 13, 11, 6,
+			15, 11, 6, 13, 11, 11, 11, 11, 11, 11, 11, 9, 6, 15, 11, 6,
+			13, 11, 4, 11, 8, 6, 6, 6, 4, 6, 6, 8, 8, 15, 11, 6,
+			13, 11, 9, 15, 15, 15, 13, 13, 13, 15, 15, 15, 15, 13, 11, 4,
+			15, 11, 13, 11, 11, 11, 11, 11, 11, 11, 13, 11, 11, 9, 9, 6,
+			11, 9, 6, 4, 4, 6, 6, 6, 8, 8, 6, 4, 4, 6, 6, 6
+	};
+
+	uint8_t nether_brick[texWidth * texHeight] =
+	{
+			4, 4, 4, 2, 2, 4, 4, 4, 4, 4, 2, 2, 2, 6, 4, 4,
+			4, 2, 4, 2, 4, 4, 4, 4, 4, 4, 4, 2, 6, 4, 2, 4,
+			2, 2, 4, 0, 4, 4, 4, 2, 2, 4, 4, 0, 4, 4, 4, 2,
+			2, 2, 0, 2, 4, 4, 4, 0, 0, 2, 0, 2, 4, 4, 4, 0,
+			2, 6, 4, 4, 4, 4, 2, 2, 2, 6, 4, 4, 4, 4, 2, 2,
+			6, 2, 4, 4, 2, 4, 2, 0, 6, 4, 4, 4, 4, 4, 4, 0,
+			4, 2, 4, 2, 4, 2, 2, 0, 2, 4, 4, 2, 2, 2, 2, 2,
+			2, 0, 2, 0, 0, 2, 2, 2, 2, 2, 0, 0, 2, 2, 2, 2,
+			4, 4, 2, 2, 2, 4, 4, 4, 4, 4, 2, 2, 2, 6, 4, 4,
+			4, 4, 4, 2, 4, 2, 4, 4, 4, 4, 2, 2, 6, 2, 4, 4,
+			2, 4, 4, 0, 4, 4, 4, 4, 2, 4, 0, 2, 4, 4, 4, 2,
+			2, 2, 0, 2, 4, 4, 4, 2, 2, 0, 2, 2, 4, 4, 4, 0,
+			2, 6, 4, 4, 4, 4, 2, 0, 2, 6, 4, 4, 4, 4, 2, 0,
+			6, 4, 4, 4, 4, 4, 4, 2, 6, 4, 4, 4, 2, 4, 2, 0,
+			4, 4, 4, 2, 4, 2, 2, 0, 4, 2, 4, 2, 4, 2, 2, 2,
+			2, 2, 0, 2, 2, 0, 0, 2, 2, 2, 0, 2, 2, 2, 0, 2
+	};
+
+	uint8_t brick[texWidth * texHeight] =
+	{
+			7, 6, 6, 6, 5, 7, 7, 7, 7, 7, 7, 6, 5, 7, 7, 6,
+			6, 6, 6, 5, 5, 7, 7, 6, 7, 6, 6, 6, 5, 7, 6, 6,
+			4, 6, 5, 4, 4, 6, 6, 6, 6, 6, 6, 6, 4, 6, 5, 6,
+			4, 5, 4, 4, 5, 6, 5, 5, 4, 5, 4, 4, 5, 6, 5, 5,
+			5, 7, 7, 6, 7, 6, 6, 6, 5, 7, 7, 6, 7, 6, 6, 6,
+			5, 7, 6, 6, 6, 6, 6, 5, 5, 7, 6, 6, 6, 6, 6, 5,
+			4, 6, 5, 6, 4, 6, 5, 4, 4, 6, 5, 6, 4, 6, 5, 4,
+			5, 6, 5, 5, 4, 5, 4, 4, 5, 6, 5, 5, 4, 5, 4, 4,
+			6, 6, 6, 5, 5, 7, 7, 6, 7, 6, 6, 6, 5, 7, 6, 6,
+			6, 5, 5, 4, 5, 7, 6, 6, 6, 6, 6, 5, 5, 6, 6, 5,
+			3, 5, 4, 3, 4, 6, 5, 6, 4, 6, 5, 4, 4, 5, 4, 5,
+			4, 5, 4, 4, 5, 6, 5, 5, 4, 5, 4, 4, 5, 6, 5, 5,
+			5, 7, 7, 6, 7, 6, 6, 6, 5, 7, 7, 6, 7, 6, 6, 6,
+			5, 7, 6, 6, 6, 6, 6, 5, 5, 7, 6, 6, 6, 6, 6, 5,
+			4, 6, 5, 6, 4, 6, 5, 4, 4, 6, 5, 6, 4, 6, 5, 4,
+			5, 6, 5, 5, 4, 5, 4, 4, 5, 6, 5, 5, 4, 5, 4, 4
+	};
+
+	memcpy(texture[3], ence463_block, texWidth * texHeight);
+	memcpy(texture[4], stone_brick, texWidth * texHeight);
+	memcpy(texture[5], stone_brick_carved, texWidth * texHeight);
+	memcpy(texture[6], nether_brick, texWidth * texHeight);
+	memcpy(texture[0], brick, texWidth * texHeight);
 
 	// initialize the task tick handler
 	xLastWakeTime = xTaskGetTickCount();
@@ -295,26 +414,91 @@ void RayCaster(void *args)
 			int drawEnd = lineHeight / 2 + screenHeight / 2;
 			if (drawEnd >= screenHeight) drawEnd = screenHeight - 1;
 
-			// choose wall color
-			// simulate color by gray level
-			uint8_t color;
-			switch(worldMap[mapX][mapY])
+			// texturing calculations
+			int texNum = worldMap[mapX][mapY] - 1; // match the value in the map (0 in map is empty)
+
+			// calculate value of wallX
+			float wallX;		// where exactly the wall was hit
+			if (side == 0) wallX = rayPosY + perpWallDist * rayDirY;
+			else		   wallX = rayPosX + perpWallDist * rayDirX;
+			wallX -= floorf(wallX);
+
+			// x coordinate on the texture
+			int texX = (int)(wallX * (float) texWidth);
+			if (side == 0 && rayDirX > 0) texX = texWidth - texX - 1;
+			if (side == 1 && rayDirY < 0) texX = texWidth - texX - 1;
+
+			for (y = drawStart; y < drawEnd; y++)
 			{
-				case 1: color = 2; break;
-				case 2: color = 4; break;
-				case 3: color = 6; break;
-				case 4: color = 8; break;
-				default: color = 10; break;
+				int d = y * 256 - screenHeight * 128 + lineHeight * 128;
+				int texY = ((d * texHeight) / lineHeight) / 256;
+				uint8_t color = texture[texNum][texHeight * texY + texX];
+
+				// make color darker for y-side
+				if (side == 1)
+				{
+					color /= 2;
+				}
+
+				// set pixel
+				ScreenSetPixel(1, x, y, color);
 			}
 
-			// give x and y sides different brightness
-			if (side == 1)
+
+			// floor casting
+			float floorXWall, floorYWall;		//x, y position of the floor texel at the bottom of the wall
+
+			// 4 different wall directions possible
+			if (side == 0 && rayDirX > 0)
 			{
-				color /= 2;
+				floorXWall = mapX;
+				floorYWall = mapY + wallX;
+			}
+			else if (side == 0 && rayDirX < 0)
+			{
+				floorXWall = mapX + 1.0;
+				floorYWall = mapY = wallX;
+			}
+			else if (side == 1 && rayDirY > 0)
+			{
+				floorXWall = mapX + wallX;
+				floorYWall = mapY;
+			}
+			else
+			{
+				floorXWall = mapX + wallX;
+				floorYWall = mapY + 1.0;
 			}
 
-			// draw the pixels of the stripes as a vertical line
-			ScreenDrawLine(1, x, drawStart, x, drawEnd, color);
+			float distWall, distPlayer, currentDist;
+			distWall = perpWallDist;
+			distPlayer = 0.0;
+
+			// become > 0 when the integer overflows
+			if (drawEnd < 0) drawEnd = screenHeight;
+
+			// draw the floor from drawEnd to the bottom of the screen
+			for (y = drawEnd + 1; y < screenHeight; y++)
+			{
+				currentDist = screenHeight / (2.0 * y - screenHeight);	// small lookup table can be used instead
+
+				float weight = (currentDist - distPlayer) / (distWall - distPlayer);
+
+				float currentFloorX = weight * floorXWall + (1.0 - weight) * posX;
+				float currentFloorY = weight * floorYWall + (1.0 - weight) * posY;
+
+				int floorTexX, floorTexY;
+				floorTexX = (int) (currentFloorX * texWidth) % texWidth;
+				floorTexY = (int) (currentFloorY * texHeight) % texHeight;
+
+				// floor
+				ScreenSetPixel(1, x, y, texture[4][texWidth * floorTexY + floorTexX] / 2);
+
+				// ceiling
+				ScreenSetPixel(1, x, screenHeight - y, texture[6][texWidth * floorTexY + floorTexX]);
+
+
+			}
 
 		}
 
@@ -323,14 +507,17 @@ void RayCaster(void *args)
 		time = xTaskGetTickCount();
 		portTickType frameTime = (time - oldTime) * portTICK_RATE_MS;
 		sprintf(textBuffer, "FPS:%d", 1000 / frameTime);
-		ScreenDrawBox(1, 0, 0, 127, 8, 0);
-		ScreenPrintStr(1, textBuffer, strlen(textBuffer), 0, 0, FONT_6x8, 10);
+		ScreenPrintStr(1, textBuffer, strlen(textBuffer), 0, 0, FONT_6x8, 15);
+
+		// position
+		sprintf(textBuffer, "X:%d Y:%d (%d,%d)", (int)posX, (int)posY, (int)(dirX * 57.296f),  (int)(dirY * 57.296f));
+		ScreenPrintStr(1, textBuffer, strlen(textBuffer), 0, 88, FONT_6x8, 15);
 
 		float frameTimeS = frameTime / 1000.0f;
 
 		// speed modifier
-		float moveSpeed = frameTimeS * 5.0;
-		float rotSpeed = frameTimeS * 3.0;
+		float moveSpeed = 0.2;
+		float rotSpeed = 0.1;
 
 		// get user input
 		if (xQueueReceive(buttonEventQueue, &button, 0) == pdPASS)
@@ -386,7 +573,7 @@ void RayCaster(void *args)
 		xSemaphoreGive(screenUpdateEvent);
 
 		// run this task at precisely at 100Hz
-		vTaskDelayUntil(&xLastWakeTime, (50 / portTICK_RATE_MS));
+		vTaskDelayUntil(&xLastWakeTime, (10 / portTICK_RATE_MS));
 	}
 }
 
