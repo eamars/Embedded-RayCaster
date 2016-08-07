@@ -64,6 +64,8 @@
 #define screenWidth 128
 #define screenHeight 96
 
+#define verticalOffset 0
+
 #define texWidth 16
 #define texHeight 16
 
@@ -119,6 +121,7 @@ void PinInit()
 
 
 int main( void )
+
 {
 	/* Set the clocking to run from the PLL at 50 MHz.  Assumes 8MHz XTAL,
 	whereas some older eval boards used 6MHz. */
@@ -509,7 +512,7 @@ void RayCaster(void *args)
 				}
 
 				// set pixel
-				ScreenSetPixel(1, x, y, color);
+				ScreenSetPixel(1, x, y + verticalOffset, color);
 			}
 
 			if (renderEnvironment)
@@ -562,10 +565,10 @@ void RayCaster(void *args)
 					floorTexY = ((int) (currentFloorY * texHeight)) % texHeight;
 
 					// floor
-					ScreenSetPixel(1, x, y, texture[TEXTURE_STONE_BRICK][texWidth * floorTexY + floorTexX] >> 1);
+					ScreenSetPixel(1, x, y + verticalOffset, texture[TEXTURE_STONE_BRICK][texWidth * floorTexY + floorTexX] >> 1);
 
 					// ceiling
-					ScreenSetPixel(1, x, screenHeight - y, texture[TEXTURE_GREYSTONE][texWidth * floorTexY + floorTexX]);
+					ScreenSetPixel(1, x, screenHeight - y + verticalOffset, texture[TEXTURE_GREYSTONE][texWidth * floorTexY + floorTexX]);
 				}
 			}
 		}
@@ -599,15 +602,15 @@ void RayCaster(void *args)
 				}
 				case BUTTON_UP:
 				{
-					if(worldMap[(int)(posX + dirX * moveSpeed)][(int)(posY)] == false) posX += dirX * moveSpeed;
-					if(worldMap[(int)(posX)][(int)(posY + dirY * moveSpeed)] == false) posY += dirY * moveSpeed;
+					if(worldMap[(int)floorf(posX + dirX * moveSpeed)][(int)floorf(posY)] == false) posX += dirX * moveSpeed;
+					if(worldMap[(int)floorf(posX)][(int)floorf(posY + dirY * moveSpeed)] == false) posY += dirY * moveSpeed;
 
 					break;
 				}
 				case BUTTON_DOWN:
 				{
-					if(worldMap[(int)(posX + dirX * moveSpeed)][(int)(posY)] == false) posX -= dirX * moveSpeed;
-					if(worldMap[(int)(posX)][(int)(posY + dirY * moveSpeed)] == false) posY -= dirY * moveSpeed;
+					if(worldMap[(int)ceilf(posX + dirX * moveSpeed)][(int)ceilf(posY)] == false) posX -= dirX * moveSpeed;
+					if(worldMap[(int)ceilf(posX)][(int)ceilf(posY + dirY * moveSpeed)] == false) posY -= dirY * moveSpeed;
 
 					break;
 				}
@@ -637,7 +640,6 @@ void RayCaster(void *args)
 				}
 			}
 		}
-
 
 		xSemaphoreGive(screenUpdateEvent);
 
