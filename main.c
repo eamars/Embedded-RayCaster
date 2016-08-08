@@ -57,17 +57,13 @@
 #include "drivers/rit128x96x4.h"
 #include "screen.h"
 #include "button.h"
-
-#define mapWidth 24
-#define mapHeight 24
+#include "texture.h"
+#include "world_map.h"
 
 #define screenWidth 128
 #define screenHeight 96
 
 #define verticalOffset 0
-
-#define texWidth 16
-#define texHeight 16
 
 typedef enum
 {
@@ -98,7 +94,7 @@ typedef struct
 /* The task function. */
 void RayCaster(void *args);
 void ScreenUpdateThread( void *args );
-
+void TimerUpdateThread(void *args);
 
 
 void PinReset()
@@ -119,7 +115,6 @@ void PinInit()
 }
 
 
-
 int main( void )
 
 {
@@ -131,7 +126,8 @@ int main( void )
 	xQueueHandle buttonEventQueue = xQueueCreate(5, sizeof(uint8_t));
 
 	// create semaphore for screen update event
-	xSemaphoreHandle screenUpdateEvent = xSemaphoreCreateCounting(10, 1);
+	xSemaphoreHandle screenUpdateEvent;
+	vSemaphoreCreateBinary(screenUpdateEvent);
 
 	// create an argument handler that pass multiple argument to tasks
 	ArgumentHandler handler = {.arg0 = buttonEventQueue, .arg1 = screenUpdateEvent};
@@ -144,8 +140,9 @@ int main( void )
 	ButtonInit(buttonEventQueue);
 
 
-	xTaskCreate(RayCaster, "RayCaster", 2000, (void *) &handler, 1, NULL);
-	xTaskCreate(ScreenUpdateThread, "ScreenUpdateThread", 240, (void *) screenUpdateEvent, 2, NULL);
+	xTaskCreate(RayCaster, "RayCaster", 960, (void *) &handler, 1, NULL);
+	xTaskCreate(ScreenUpdateThread, "ScreenUpdateThread", 48, (void *) screenUpdateEvent, 2, NULL);
+	xTaskCreate(TimerUpdateThread, "TimerUpdateThread", 240, (void *) screenUpdateEvent, 3, NULL);
 
 	/* Create the other task in exactly the same way.  Note this time that we
 	are creating the SAME task, but passing in a different parameter.  We are
@@ -200,171 +197,6 @@ void RayCaster(void *args)
 	// iterative variable
 	int x, y;
 
-	int worldMap[mapWidth][mapHeight]=
-	{
-			{8,8,8,8,8,8,8,8,8,8,8,4,4,6,4,4,6,4,6,4,4,4,6,4},
-			{8,0,0,0,0,0,0,0,0,0,8,4,0,0,0,0,0,0,0,0,0,0,0,4},
-			{8,0,3,3,0,0,0,0,0,8,8,4,0,0,0,0,0,0,0,0,0,0,0,6},
-			{8,0,0,3,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,6},
-			{8,0,3,3,0,0,0,0,0,8,8,4,0,0,0,0,0,0,0,0,0,0,0,4},
-			{8,0,0,0,0,0,0,0,0,0,8,4,0,0,0,0,0,6,6,6,0,6,4,6},
-			{8,8,8,8,0,8,8,8,8,8,8,4,4,4,4,4,4,6,0,0,0,0,0,6},
-			{7,7,7,7,0,7,7,7,7,0,8,0,8,0,8,0,8,4,0,4,0,6,0,6},
-			{7,7,0,0,0,0,0,0,7,8,0,8,0,8,0,8,8,6,0,0,0,0,0,6},
-			{7,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,8,6,0,0,0,0,0,4},
-			{7,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,8,6,0,6,0,6,0,6},
-			{7,7,0,0,0,0,0,0,7,8,0,8,0,8,0,8,8,6,4,6,0,6,6,6},
-			{7,7,7,7,0,7,7,7,7,8,8,4,0,6,8,4,8,3,3,3,0,3,3,3},
-			{1,1,1,1,0,1,1,1,1,4,6,4,0,0,6,0,6,3,0,0,0,0,0,3},
-			{1,1,0,0,0,0,0,1,1,4,0,0,0,0,0,0,4,3,0,0,0,0,0,3},
-			{1,0,0,0,0,0,0,0,1,4,0,0,0,0,0,0,4,3,0,0,0,0,0,3},
-			{1,0,0,0,5,0,0,0,1,4,4,4,4,4,6,0,6,3,3,0,0,0,3,3},
-			{1,0,0,0,0,0,0,0,1,1,4,9,4,1,1,6,6,0,0,5,0,5,0,5},
-			{1,1,0,0,3,0,0,1,1,1,0,0,0,1,1,0,5,0,5,0,0,0,5,5},
-			{1,0,0,0,0,0,0,0,1,0,0,0,0,0,1,5,0,5,0,5,0,5,0,5},
-			{1,0,0,0,2,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,5},
-			{1,0,0,0,0,0,0,0,1,0,0,0,0,0,1,5,0,5,0,5,0,5,0,5},
-			{1,1,0,0,7,0,0,1,1,1,0,0,0,2,1,0,5,0,5,0,0,0,5,5},
-			{1,1,1,1,1,1,1,2,2,2,1,1,1,1,1,5,5,5,5,5,5,5,5,5}
-	};
-
-	uint8_t ence463_block[texWidth * texHeight] = {
-			10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10,
-			10, 5 , 5 , 5 , 10, 5 , 10, 5 , 10, 10, 5 , 5 , 10, 5 , 5 , 5 ,
-			10, 5 , 10, 10, 10, 5 , 5 , 5 , 10, 5 , 10, 10, 10, 5 , 10, 10,
-			10, 5 , 5 , 5 , 10, 5 , 5 , 5 , 10, 5 , 10, 10, 10, 5 , 5 , 5 ,
-			10, 5 , 10, 10, 10, 5 , 10, 5 , 10, 5 , 10, 10, 10, 5 , 10, 10,
-			10, 5 , 5 , 5 , 10, 5 , 10, 5 , 10, 10, 5 , 5 , 10, 5 , 5 , 5 ,
-			10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10,
-			10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10,
-			10, 5 , 10, 5 , 10, 10, 5 , 5 , 10, 5 , 5 , 10, 10, 10, 10, 10,
-			10, 5 , 10, 5 , 10, 5 , 10, 10, 10, 10, 10, 5 , 10, 10, 10, 10,
-			10, 5 , 5 , 5 , 10, 5 , 5 , 5 , 10, 5 , 5 , 10, 10, 10, 10, 10,
-			10, 10, 10, 5 , 10, 5 , 10, 5 , 10, 10, 10, 5 , 10, 10, 10, 10,
-			10, 10, 10, 5 , 10, 5 , 5 , 5 , 10, 5 , 5 , 10, 10, 10, 10, 10,
-			10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10,
-			10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10,
-			10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10
-	};
-
-	uint8_t stone_brick[texWidth * texHeight] = {
-			15, 13, 13, 13, 15, 15, 15, 15, 13, 13, 13, 13, 13, 13, 15, 13,
-			13, 11, 13, 13, 13, 13, 11, 11, 11, 11, 11, 11, 13, 13, 13, 6,
-			13, 13, 11, 13, 13, 11, 11, 11, 11, 11, 13, 13, 13, 13, 11, 4,
-			13, 13, 11, 11, 13, 11, 13, 13, 11, 13, 13, 11, 11, 11, 11, 6,
-			13, 11, 11, 11, 13, 13, 11, 11, 11, 11, 13, 11, 11, 13, 11, 6,
-			13, 13, 13, 13, 11, 11, 11, 11, 11, 13, 13, 11, 13, 11, 11, 6,
-			15, 13, 13, 11, 11, 11, 13, 13, 13, 11, 11, 11, 11, 11, 11, 6,
-			11, 6, 6, 4, 6, 6, 6, 6, 6, 6, 4, 6, 6, 6, 6, 4,
-			13, 15, 15, 13, 15, 15, 13, 11, 15, 13, 13, 15, 15, 13, 13, 13,
-			11, 11, 13, 13, 13, 11, 11, 6, 13, 11, 13, 13, 13, 11, 11, 11,
-			13, 13, 11, 11, 13, 11, 11, 6, 15, 13, 13, 11, 11, 11, 13, 11,
-			13, 11, 11, 11, 11, 13, 13, 6, 15, 11, 11, 11, 13, 13, 13, 11,
-			11, 11, 11, 13, 13, 11, 13, 6, 13, 11, 13, 13, 13, 11, 13, 13,
-			11, 11, 11, 13, 13, 13, 11, 6, 13, 13, 13, 11, 13, 13, 11, 11,
-			11, 11, 13, 13, 11, 11, 11, 6, 13, 11, 13, 13, 11, 11, 11, 11,
-			6, 6, 6, 4, 4, 6, 6, 4, 11, 6, 6, 6, 6, 6, 6, 6
-	};
-
-	uint8_t stone_brick_carved[texWidth * texHeight] =
-	{
-			15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 13, 15, 15, 15, 13,
-			13, 11, 13, 11, 11, 11, 11, 11, 11, 9, 11, 11, 11, 11, 11, 6,
-			8, 6, 6, 6, 6, 4, 4, 4, 6, 6, 6, 8, 6, 8, 11, 4,
-			15, 15, 15, 13, 15, 15, 15, 15, 15, 15, 15, 15, 11, 13, 9, 6,
-			15, 11, 9, 11, 11, 11, 11, 11, 11, 11, 11, 9, 4, 15, 11, 8,
-			13, 11, 6, 8, 6, 4, 4, 4, 6, 6, 13, 11, 6, 13, 11, 4,
-			15, 11, 6, 13, 15, 13, 15, 15, 15, 6, 13, 11, 6, 13, 11, 8,
-			15, 11, 4, 13, 6, 6, 9, 6, 13, 4, 13, 11, 6, 15, 11, 6,
-			13, 11, 9, 15, 6, 9, 11, 13, 11, 6, 15, 11, 9, 15, 11, 4,
-			15, 11, 8, 15, 4, 6, 4, 6, 6, 6, 15, 13, 6, 13, 11, 4,
-			15, 11, 6, 15, 13, 15, 15, 15, 15, 15, 13, 11, 4, 13, 11, 6,
-			15, 11, 6, 13, 11, 11, 11, 11, 11, 11, 11, 9, 6, 15, 11, 6,
-			13, 11, 4, 11, 8, 6, 6, 6, 4, 6, 6, 8, 8, 15, 11, 6,
-			13, 11, 9, 15, 15, 15, 13, 13, 13, 15, 15, 15, 15, 13, 11, 4,
-			15, 11, 13, 11, 11, 11, 11, 11, 11, 11, 13, 11, 11, 9, 9, 6,
-			11, 9, 6, 4, 4, 6, 6, 6, 8, 8, 6, 4, 4, 6, 6, 6
-	};
-
-	uint8_t nether_brick[texWidth * texHeight] =
-	{
-			4, 4, 4, 2, 2, 4, 4, 4, 4, 4, 2, 2, 2, 6, 4, 4,
-			4, 2, 4, 2, 4, 4, 4, 4, 4, 4, 4, 2, 6, 4, 2, 4,
-			2, 2, 4, 0, 4, 4, 4, 2, 2, 4, 4, 0, 4, 4, 4, 2,
-			2, 2, 0, 2, 4, 4, 4, 0, 0, 2, 0, 2, 4, 4, 4, 0,
-			2, 6, 4, 4, 4, 4, 2, 2, 2, 6, 4, 4, 4, 4, 2, 2,
-			6, 2, 4, 4, 2, 4, 2, 0, 6, 4, 4, 4, 4, 4, 4, 0,
-			4, 2, 4, 2, 4, 2, 2, 0, 2, 4, 4, 2, 2, 2, 2, 2,
-			2, 0, 2, 0, 0, 2, 2, 2, 2, 2, 0, 0, 2, 2, 2, 2,
-			4, 4, 2, 2, 2, 4, 4, 4, 4, 4, 2, 2, 2, 6, 4, 4,
-			4, 4, 4, 2, 4, 2, 4, 4, 4, 4, 2, 2, 6, 2, 4, 4,
-			2, 4, 4, 0, 4, 4, 4, 4, 2, 4, 0, 2, 4, 4, 4, 2,
-			2, 2, 0, 2, 4, 4, 4, 2, 2, 0, 2, 2, 4, 4, 4, 0,
-			2, 6, 4, 4, 4, 4, 2, 0, 2, 6, 4, 4, 4, 4, 2, 0,
-			6, 4, 4, 4, 4, 4, 4, 2, 6, 4, 4, 4, 2, 4, 2, 0,
-			4, 4, 4, 2, 4, 2, 2, 0, 4, 2, 4, 2, 4, 2, 2, 2,
-			2, 2, 0, 2, 2, 0, 0, 2, 2, 2, 0, 2, 2, 2, 0, 2
-	};
-
-	uint8_t brick[texWidth * texHeight] =
-	{
-			3, 4, 4, 2, 4, 3, 4, 4, 3, 2, 4, 4, 3, 3, 3, 3,
-			4, 4, 3, 2, 5, 4, 4, 4, 4, 2, 4, 4, 4, 4, 4, 3,
-			2, 2, 2, 1, 2, 2, 2, 2, 2, 1, 2, 2, 2, 2, 2, 2,
-			5, 4, 4, 4, 3, 5, 5, 4, 4, 4, 4, 4, 5, 2, 5, 5,
-			3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 1, 4, 3,
-			3, 3, 3, 3, 3, 3, 3, 2, 3, 3, 3, 3, 3, 3, 3, 2,
-			4, 4, 4, 4, 4, 4, 3, 3, 4, 4, 4, 3, 4, 4, 4, 2,
-			3, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2,
-			5, 5, 3, 3, 5, 4, 4, 4, 4, 4, 3, 4, 5, 4, 4, 4,
-			3, 3, 2, 3, 4, 3, 3, 3, 3, 3, 3, 4, 4, 4, 4, 3,
-			3, 3, 3, 3, 3, 3, 3, 3, 2, 3, 3, 3, 3, 3, 3, 2,
-			4, 4, 4, 4, 3, 4, 4, 3, 3, 4, 3, 4, 3, 4, 4, 2,
-			2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2,
-			4, 4, 4, 4, 2, 4, 4, 4, 4, 4, 4, 3, 4, 4, 4, 4,
-			4, 3, 4, 4, 2, 4, 4, 3, 3, 3, 3, 2, 3, 3, 4, 3,
-			2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 1, 1, 2, 2, 2, 2
-	};
-
-	uint8_t greystone[texWidth * texHeight] =
-	{
-			2, 2, 2, 5, 5, 5, 3, 3, 4, 4, 2, 3, 3, 3, 2, 2,
-			5, 4, 3, 5, 5, 4, 3, 3, 4, 4, 1, 4, 5, 5, 5, 5,
-			3, 2, 2, 5, 4, 4, 3, 1, 2, 2, 2, 4, 4, 4, 3, 3,
-			1, 1, 2, 5, 4, 4, 3, 2, 5, 5, 2, 2, 1, 1, 1, 1,
-			5, 4, 2, 4, 4, 3, 2, 2, 4, 3, 2, 4, 3, 5, 5, 5,
-			4, 4, 1, 3, 2, 1, 2, 3, 3, 3, 1, 5, 2, 5, 4, 4,
-			3, 2, 1, 5, 4, 2, 5, 5, 5, 4, 2, 5, 2, 2, 2, 3,
-			3, 4, 3, 5, 4, 2, 5, 4, 4, 4, 2, 5, 2, 3, 3, 2,
-			5, 4, 3, 5, 4, 2, 5, 4, 4, 3, 2, 5, 3, 4, 4, 3,
-			5, 4, 3, 5, 4, 1, 3, 3, 2, 1, 1, 2, 2, 2, 2, 2,
-			5, 4, 2, 4, 4, 2, 2, 4, 4, 4, 5, 5, 5, 5, 5, 2,
-			4, 3, 2, 4, 4, 2, 2, 5, 4, 4, 5, 4, 4, 4, 4, 2,
-			2, 2, 1, 1, 1, 1, 1, 4, 3, 4, 4, 4, 4, 4, 4, 2,
-			4, 5, 5, 4, 4, 4, 4, 4, 2, 1, 1, 1, 1, 1, 1, 1,
-			4, 3, 3, 3, 3, 3, 3, 3, 1, 5, 5, 3, 4, 4, 4, 3,
-			2, 1, 1, 1, 1, 1, 1, 1, 1, 2, 2, 2, 2, 2, 2, 2
-	};
-
-	uint8_t steve_block[texWidth * texHeight] =
-	{
-			3, 3, 3, 3, 3, 3, 2, 3, 3, 3, 3, 3, 3, 3, 3, 3,
-			3, 3, 3, 2, 1, 1, 2, 3, 3, 3, 4, 4, 3, 3, 4, 4,
-			3, 3, 1, 1, 1, 2, 3, 4, 5, 5, 4, 4, 4, 4, 4, 4,
-			3, 3, 1, 1, 2, 3, 4, 5, 5, 6, 5, 4, 4, 4, 4, 4,
-			3, 3, 0, 1, 0, 1, 2, 4, 2, 4, 5, 4, 4, 4, 4, 4,
-			3, 2, 0, 1, 2, 2, 2, 5, 4, 6, 6, 6, 4, 4, 4, 4,
-			3, 2, 1, 2, 2, 2, 2, 5, 5, 6, 7, 6, 4, 4, 4, 4,
-			3, 3, 3, 2, 2, 1, 2, 5, 6, 6, 6, 5, 4, 4, 4, 4,
-			3, 4, 4, 2, 2, 2, 2, 5, 6, 6, 5, 4, 4, 4, 4, 4,
-			3, 4, 3, 2, 2, 3, 3, 5, 6, 5, 5, 5, 4, 4, 5, 5,
-			3, 3, 2, 3, 3, 4, 4, 5, 6, 3, 4, 5, 6, 5, 5, 5,
-			4, 4, 3, 3, 3, 4, 5, 5, 6, 3, 5, 5, 5, 6, 6, 5,
-			5, 4, 4, 4, 4, 4, 4, 4, 3, 5, 6, 6, 6, 6, 5, 5,
-			5, 5, 5, 5, 5, 5, 5, 5, 4, 7, 6, 6, 6, 6, 5, 5,
-			5, 6, 5, 5, 5, 6, 5, 5, 5, 6, 6, 6, 6, 6, 6, 5,
-			5, 6, 5, 5, 5, 6, 5, 5, 5, 6, 6, 6, 6, 6, 6, 5
-	};
 
 	// generate texture
 	uint8_t texture[9][texWidth * texHeight];
@@ -387,7 +219,6 @@ void RayCaster(void *args)
 	memcpy(texture[TEXTURE_NETHER_BRICK], nether_brick, texWidth * texHeight);
 	memcpy(texture[TEXTURE_GREYSTONE], greystone, texWidth * texHeight);
 	memcpy(texture[TEXTURE_STEVE], steve_block, texWidth * texHeight);
-
 
 	// initialize the task tick handler
 	xLastWakeTime = xTaskGetTickCount();
@@ -602,15 +433,15 @@ void RayCaster(void *args)
 				}
 				case BUTTON_UP:
 				{
-					if(worldMap[(int)floorf(posX + dirX * moveSpeed)][(int)floorf(posY)] == false) posX += dirX * moveSpeed;
-					if(worldMap[(int)floorf(posX)][(int)floorf(posY + dirY * moveSpeed)] == false) posY += dirY * moveSpeed;
+					if(worldMap[(int)floorf(posX + dirX * moveSpeed)][(int)floorf(posY)] == 0) posX += dirX * moveSpeed;
+					if(worldMap[(int)floorf(posX)][(int)floorf(posY + dirY * moveSpeed)] == 0) posY += dirY * moveSpeed;
 
 					break;
 				}
 				case BUTTON_DOWN:
 				{
-					if(worldMap[(int)ceilf(posX + dirX * moveSpeed)][(int)ceilf(posY)] == false) posX -= dirX * moveSpeed;
-					if(worldMap[(int)ceilf(posX)][(int)ceilf(posY + dirY * moveSpeed)] == false) posY -= dirY * moveSpeed;
+					if(worldMap[(int)ceilf(posX + dirX * moveSpeed)][(int)ceilf(posY)] == 0) posX -= dirX * moveSpeed;
+					if(worldMap[(int)ceilf(posX)][(int)ceilf(posY + dirY * moveSpeed)] == 0) posY -= dirY * moveSpeed;
 
 					break;
 				}
@@ -641,6 +472,9 @@ void RayCaster(void *args)
 			}
 		}
 
+		// we don't care if we successfully give the semaphore or not since we only need to
+		// update the screen once no matter how many write operations applied to the screen
+		// buffer
 		xSemaphoreGive(screenUpdateEvent);
 
 		// run this task at precisely at 100Hz
@@ -661,6 +495,29 @@ void ScreenUpdateThread( void *args )
 
 		// mix three layers of framebuffer and display them on screen
 		ScreenUpdate();
+	}
+}
+
+void TimerUpdateThread(void *args)
+{
+	// pass argument
+	xSemaphoreHandle screenUpdateEvent = (xSemaphoreHandle) args;
+
+	portTickType xLastWakeTime = xTaskGetTickCount();
+
+	char buffer[16];
+	long counter = 0;
+
+	while (1)
+	{
+		memset(buffer, 0x0, sizeof(buffer));
+		sprintf(buffer, "count:%d", counter++);
+		ScreenClearFrameBuffer(2);
+		ScreenPrintStr(2, buffer, strlen(buffer), 50, 50, FONT_6x8, 7);
+		//ScreenDrawBox(2, 50, 50, 70, 70, 7);
+
+		// execute this task at 1 hz
+		vTaskDelayUntil(&xLastWakeTime, (1000 / portTICK_RATE_MS));
 	}
 }
 
