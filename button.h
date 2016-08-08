@@ -8,7 +8,7 @@
 #ifndef BUTTON_H_
 #define BUTTON_H_
 
-#define BUTTON_BACKOFF_DELAY 100 // in ms
+#define BUTTON_BACKOFF_DELAY 200 // in ms
 
 #include "portable/portmacro.h"
 

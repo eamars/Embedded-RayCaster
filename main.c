@@ -57,34 +57,12 @@
 #include "drivers/rit128x96x4.h"
 #include "screen.h"
 #include "button.h"
+#include "raycaster.h"
+#include "main.h"
+
+#include "raycaster.h"
 #include "texture.h"
 #include "world_map.h"
-
-#define screenWidth 128
-#define screenHeight 96
-
-#define verticalOffset 0
-
-typedef enum
-{
-	TEXTURE_BRICK = 0,
-	TEXTURE_GRID,
-	TEXTURE_CROSS,
-	TEXTURE_ENCE463,
-	TEXTURE_STONE_BRICK,
-	TEXTURE_STONE_BRICK_CARVED,
-	TEXTURE_NETHER_BRICK,
-	TEXTURE_GREYSTONE,
-	TEXTURE_STEVE
-} Texture_t;
-
-typedef struct
-{
-	void *arg0;
-	void *arg1;
-	void *arg2;
-	void *arg3;
-} ArgumentHandler;
 
 
 /* Used as a loop counter to create a very crude delay. */
@@ -92,7 +70,6 @@ typedef struct
 
 
 /* The task function. */
-void RayCaster(void *args);
 void ScreenUpdateThread( void *args );
 void TimerUpdateThread(void *args);
 
@@ -116,7 +93,6 @@ void PinInit()
 
 
 int main( void )
-
 {
 	/* Set the clocking to run from the PLL at 50 MHz.  Assumes 8MHz XTAL,
 	whereas some older eval boards used 6MHz. */
@@ -142,7 +118,7 @@ int main( void )
 
 	xTaskCreate(RayCaster, "RayCaster", 960, (void *) &handler, 1, NULL);
 	xTaskCreate(ScreenUpdateThread, "ScreenUpdateThread", 48, (void *) screenUpdateEvent, 2, NULL);
-	xTaskCreate(TimerUpdateThread, "TimerUpdateThread", 240, (void *) screenUpdateEvent, 3, NULL);
+	// xTaskCreate(TimerUpdateThread, "TimerUpdateThread", 240, (void *) screenUpdateEvent, 3, NULL);
 
 	/* Create the other task in exactly the same way.  Note this time that we
 	are creating the SAME task, but passing in a different parameter.  We are
@@ -157,7 +133,6 @@ int main( void )
 	for( ;; );
 }
 /*-----------------------------------------------------------*/
-
 
 /*
  * The game is inspired from the idea of ray caster, which was used in the world's first
@@ -180,7 +155,7 @@ void RayCaster(void *args)
 
 	// button
 	int8_t button;
-	bool renderEnvironment = true;
+	bool enableFog = true;
 
 	// variables about ray casting
 	float posX = 22.0f;
@@ -219,6 +194,12 @@ void RayCaster(void *args)
 	memcpy(texture[TEXTURE_NETHER_BRICK], nether_brick, texWidth * texHeight);
 	memcpy(texture[TEXTURE_GREYSTONE], greystone, texWidth * texHeight);
 	memcpy(texture[TEXTURE_STEVE], steve_block, texWidth * texHeight);
+
+	// make small lookup table for currentDist when rendering floor
+	for (y = screenHeight/2; y < screenHeight; y++)
+	{
+		currentDistTable[y - screenHeight / 2] = screenHeight / (2.0f * y - screenHeight);
+	}
 
 	// initialize the task tick handler
 	xLastWakeTime = xTaskGetTickCount();
@@ -342,65 +323,77 @@ void RayCaster(void *args)
 					color >>= 1;
 				}
 
+				if (perpWallDist > 3)
+				{
+					color >>= (int)(perpWallDist - 3);
+				}
+
 				// set pixel
 				ScreenSetPixel(1, x, y + verticalOffset, color);
 			}
 
-			if (renderEnvironment)
+			// floor casting
+			float floorXWall, floorYWall;		//x, y position of the floor texel at the bottom of the wall
+
+			// 4 different wall directions possible
+			if (side == 0 && rayDirX > 0)
 			{
-				// floor casting
-				float floorXWall, floorYWall;		//x, y position of the floor texel at the bottom of the wall
+				floorXWall = mapX;
+				floorYWall = mapY + wallX;
+			}
+			else if (side == 0 && rayDirX < 0)
+			{
+				floorXWall = mapX + 1.0f;
+				floorYWall = mapY + wallX;
+			}
+			else if (side == 1 && rayDirY > 0)
+			{
+				floorXWall = mapX + wallX;
+				floorYWall = mapY;
+			}
+			else if (side == 1 && rayDirY < 0)
+			{
+				floorXWall = mapX + wallX;
+				floorYWall = mapY + 1.0f;
+			}
 
-				// 4 different wall directions possible
-				if (side == 0 && rayDirX > 0)
+			float distWall, currentDist;
+
+			distWall = perpWallDist;
+
+			// become > 0 when the integer overflows
+			if (drawEnd < 0) drawEnd = screenHeight - 1;
+
+			// draw the floor from drawEnd to the bottom of the screen
+			for (y = drawEnd; y < screenHeight; y++)
+			{
+				// currentDist = screenHeight / (2.0f * y - screenHeight);	// small lookup table can be used instead
+				currentDist = currentDistTable[y - screenHeight / 2];
+
+				float weight = currentDist / distWall;
+
+				float currentFloorX = weight * floorXWall + (1.0f - weight) * posX;
+				float currentFloorY = weight * floorYWall + (1.0f - weight) * posY;
+
+				int floorTexX, floorTexY;
+				floorTexX = ((int) (currentFloorX * texWidth)) % texWidth;
+				floorTexY = ((int) (currentFloorY * texHeight)) % texHeight;
+
+				uint8_t floor_color = texture[TEXTURE_STONE_BRICK][texWidth * floorTexY + floorTexX] >> 1;
+				uint8_t celing_color = texture[TEXTURE_GREYSTONE][texWidth * floorTexY + floorTexX];
+
+				if (currentDist > 3.5)
 				{
-					floorXWall = mapX;
-					floorYWall = mapY + wallX;
-				}
-				else if (side == 0 && rayDirX < 0)
-				{
-					floorXWall = mapX + 1.0f;
-					floorYWall = mapY + wallX;
-				}
-				else if (side == 1 && rayDirY > 0)
-				{
-					floorXWall = mapX + wallX;
-					floorYWall = mapY;
-				}
-				else if (side == 1 && rayDirY < 0)
-				{
-					floorXWall = mapX + wallX;
-					floorYWall = mapY + 1.0f;
+					uint8_t fade_ratio = (int)(perpWallDist - 3.5);
+					floor_color >>= fade_ratio;
+					celing_color >>= fade_ratio;
 				}
 
-				float distWall, distPlayer, currentDist;
+				// floor
+				ScreenSetPixel(1, x, y + verticalOffset, floor_color);
 
-				distWall = perpWallDist;
-				distPlayer = 0.0f;
-
-				// become > 0 when the integer overflows
-				if (drawEnd < 0) drawEnd = screenHeight - 1;
-
-				// draw the floor from drawEnd to the bottom of the screen
-				for (y = drawEnd; y < screenHeight; y++)
-				{
-					currentDist = screenHeight / (2.0f * y - screenHeight);	// small lookup table can be used instead
-
-					float weight = (currentDist - distPlayer) / (distWall - distPlayer);
-
-					float currentFloorX = weight * floorXWall + (1.0f - weight) * posX;
-					float currentFloorY = weight * floorYWall + (1.0f - weight) * posY;
-
-					int floorTexX, floorTexY;
-					floorTexX = ((int) (currentFloorX * texWidth)) % texWidth;
-					floorTexY = ((int) (currentFloorY * texHeight)) % texHeight;
-
-					// floor
-					ScreenSetPixel(1, x, y + verticalOffset, texture[TEXTURE_STONE_BRICK][texWidth * floorTexY + floorTexX] >> 1);
-
-					// ceiling
-					ScreenSetPixel(1, x, screenHeight - y + verticalOffset, texture[TEXTURE_GREYSTONE][texWidth * floorTexY + floorTexX]);
-				}
+				// ceiling
+				ScreenSetPixel(1, x, screenHeight - y + verticalOffset, celing_color);
 			}
 		}
 
@@ -428,7 +421,7 @@ void RayCaster(void *args)
 			{
 				case BUTTON_SELECT:
 				{
-					renderEnvironment = !renderEnvironment;
+					enableFog = !enableFog;
 					break;
 				}
 				case BUTTON_UP:
@@ -481,6 +474,8 @@ void RayCaster(void *args)
 		vTaskDelayUntil(&xLastWakeTime, (50 / portTICK_RATE_MS));
 	}
 }
+
+
 
 
 void ScreenUpdateThread( void *args )

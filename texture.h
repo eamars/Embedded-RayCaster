@@ -10,6 +10,19 @@
 
 #include <stdint.h>
 
+typedef enum
+{
+	TEXTURE_BRICK = 0,
+	TEXTURE_GRID,
+	TEXTURE_CROSS,
+	TEXTURE_ENCE463,
+	TEXTURE_STONE_BRICK,
+	TEXTURE_STONE_BRICK_CARVED,
+	TEXTURE_NETHER_BRICK,
+	TEXTURE_GREYSTONE,
+	TEXTURE_STEVE
+} Texture_t;
+
 #define texWidth 16
 #define texHeight 16
 
