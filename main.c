@@ -149,7 +149,14 @@ int main( void ){
 
 void exitIntroState(xTimerHandle pxTimer)
 {
-	printf("Exec\r\n");
+	gameState = 1;
+	ScreenClearFrameBuffer(2);
+}
+
+void exitInteractState(xTimerHandle pxTimer)
+{
+	gameState = 1;
+	ScreenClearFrameBuffer(2);
 }
 
 
