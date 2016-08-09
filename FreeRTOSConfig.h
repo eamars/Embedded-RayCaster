@@ -74,6 +74,12 @@
 #define configGENERATE_RUN_TIME_STATS	0
 #define configUSE_MALLOC_FAILED_HOOK	1
 
+/* Software timer related definitions. */
+#define configUSE_TIMERS                        1
+#define configTIMER_TASK_PRIORITY               3
+#define configTIMER_QUEUE_LENGTH                10
+#define configTIMER_TASK_STACK_DEPTH            configMINIMAL_STACK_SIZE
+
 /* Set the following definitions to 1 to include the API function, or zero
 to exclude the API function. */
 
@@ -98,7 +104,8 @@ to exclude the API function. */
 /* Priority 5, or 160 as only the top three bits are implemented. */
 #define configMAX_SYSCALL_INTERRUPT_PRIORITY 	( 5 << (8 - configPRIO_BITS) )
 
-
+/* Define to trap errors during development. */
+#define configASSERT(x)     (void) x
 
 #endif /* FREERTOS_CONFIG_H */
 

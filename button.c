@@ -81,7 +81,7 @@ void ButtonInterruptHandler()
 			// debounce
 			if (buttonList[i].state == 1) // state 1 hold off until backoff timer expires
 			{
-				if ((currentTick - buttonList[i].backoff_tick) * portTICK_RATE_MS < BUTTON_BACKOFF_DELAY)
+				if ((currentTick - buttonList[i].backoff_tick) / portTICK_RATE_MS < BUTTON_BACKOFF_DELAY)
 				{
 					break;
 				}

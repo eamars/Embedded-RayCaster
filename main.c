@@ -42,6 +42,7 @@
 #include "include/task.h"
 #include "include/queue.h"
 #include "include/semphr.h"
+#include "include/timers.h"
 
 /* Stellaris library includes. */
 #include "inc/hw_types.h"
@@ -68,10 +69,22 @@
 /* Used as a loop counter to create a very crude delay. */
 #define mainDELAY_LOOP_COUNT		( 0xfffff )
 
+// game related
+typedef enum
+{
+	INTRO = 0,
+	ROAM,
+	INTERACT,
+	GAME_END_SUCCESS,
+	GAME_END_FAILED
+} Game_t;
+
 
 /* The task function. */
 void ScreenUpdateThread( void *args );
 void TimerUpdateThread(void *args);
+
+uint8_t gameState;
 
 
 void PinReset()
@@ -92,8 +105,7 @@ void PinInit()
 }
 
 
-int main( void )
-{
+int main( void ){
 	/* Set the clocking to run from the PLL at 50 MHz.  Assumes 8MHz XTAL,
 	whereas some older eval boards used 6MHz. */
 	SysCtlClockSet( SYSCTL_SYSDIV_4 | SYSCTL_USE_PLL | SYSCTL_OSC_MAIN | SYSCTL_XTAL_8MHZ );
@@ -134,6 +146,13 @@ int main( void )
 }
 /*-----------------------------------------------------------*/
 
+
+void exitIntroState(xTimerHandle pxTimer)
+{
+	printf("Exec\r\n");
+}
+
+
 /*
  * The game is inspired from the idea of ray caster, which was used in the world's first
  * FPS game Wolfstein 3D.
@@ -157,6 +176,9 @@ void RayCaster(void *args)
 	int8_t button;
 	bool enableFog = true;
 
+	// initialize game state
+	gameState = 0;
+
 	// variables about ray casting
 	float posX = 22.0f;
 	float posY = 11.5f; 		// starting position
@@ -174,7 +196,6 @@ void RayCaster(void *args)
 
 
 	// generate texture
-	uint8_t texture[9][texWidth * texHeight];
 	memset(texture, 0x0, sizeof(texture));
 
 	for (x = 0; x < texWidth; x++)
@@ -200,6 +221,21 @@ void RayCaster(void *args)
 	{
 		currentDistTable[y - screenHeight / 2] = screenHeight / (2.0f * y - screenHeight);
 	}
+
+	// display a startup message on screen buffer 2
+	ScreenPrintStr(2, "You find yourself", 17, 14, 20, FONT_6x8, 15);
+	ScreenPrintStr(2, "awake in a strange", 18, 11, 28, FONT_6x8, 15);
+	ScreenPrintStr(2, "room. Mist", 10, 34, 36, FONT_6x8, 15);
+	ScreenPrintStr(2, "surrounding you are", 20, 8, 44, FONT_6x8, 15);
+	ScreenPrintStr(2, "getting thick.", 14, 25, 52, FONT_6x8, 15);
+	ScreenPrintStr(2, "You need to find a", 19, 10, 60, FONT_6x8, 15);
+	ScreenPrintStr(2, "way out!", 8, 40, 68, FONT_6x8, 15);
+
+	// create a timer object which will be expired after 5 second
+	xTimerHandle GameIntroTimer = xTimerCreate("GameIntroTimer", 5000 * portTICK_RATE_MS, pdFALSE, NULL, exitIntroState);
+
+	// start the timer
+	xTimerStart(GameIntroTimer, 0);
 
 	// initialize the task tick handler
 	xLastWakeTime = xTaskGetTickCount();
@@ -323,9 +359,9 @@ void RayCaster(void *args)
 					color >>= 1;
 				}
 
-				if (perpWallDist > 3)
+				if (perpWallDist > VIEW_DIST_WALL && enableFog)
 				{
-					color >>= (int)(perpWallDist - 3);
+					color >>= (int)(perpWallDist - VIEW_DIST_WALL);
 				}
 
 				// set pixel
@@ -382,9 +418,9 @@ void RayCaster(void *args)
 				uint8_t floor_color = texture[TEXTURE_STONE_BRICK][texWidth * floorTexY + floorTexX] >> 1;
 				uint8_t celing_color = texture[TEXTURE_GREYSTONE][texWidth * floorTexY + floorTexX];
 
-				if (currentDist > 3.5)
+				if (currentDist > VIEW_DIST_FLOOR && enableFog)
 				{
-					uint8_t fade_ratio = (int)(perpWallDist - 3.5);
+					uint8_t fade_ratio = (int)(perpWallDist - VIEW_DIST_FLOOR);
 					floor_color >>= fade_ratio;
 					celing_color >>= fade_ratio;
 				}
@@ -421,21 +457,24 @@ void RayCaster(void *args)
 			{
 				case BUTTON_SELECT:
 				{
-					enableFog = !enableFog;
 					break;
 				}
 				case BUTTON_UP:
 				{
+					if (gameState == 0) break;
+
 					float moveX = posX + dirX * moveSpeed;
 					float moveY = posY + dirY * moveSpeed;
 
 					if(worldMap[(int)(moveX)][(int)(posY)] == 0) posX = moveX;
-					if(worldMap[(int)(posX)][(int)(moveY)] == 0) posY += dirY * moveSpeed;
+					if(worldMap[(int)(posX)][(int)(moveY)] == 0) posY = moveY;
 
 					break;
 				}
 				case BUTTON_DOWN:
 				{
+					if (gameState == 0) break;
+
 					float moveX = posX - dirX * moveSpeed;
 					float moveY = posY - dirY * moveSpeed;
 

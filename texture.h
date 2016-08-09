@@ -26,6 +26,8 @@ typedef enum
 #define texWidth 16
 #define texHeight 16
 
+uint8_t texture[9][texWidth * texHeight];
+
 uint8_t ence463_block[texWidth * texHeight] = {
 		10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10,
 		10, 5 , 5 , 5 , 10, 5 , 10, 5 , 10, 10, 5 , 5 , 10, 5 , 5 , 5 ,

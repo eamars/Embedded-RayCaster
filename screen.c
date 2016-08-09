@@ -18,12 +18,7 @@ static uint8_t framebuffer[3][6144];
 
 void ScreenClearFrameBuffer(uint8_t fb_idx)
 {
-	unsigned long ulLoop;
-
-	for(ulLoop = 0; ulLoop < 6144; ulLoop += 4)
-	{
-		*((unsigned long *)(framebuffer[fb_idx] + ulLoop)) = 0;
-	}
+	memset(framebuffer[fb_idx], 0x0, sizeof(framebuffer[fb_idx]));
 }
 
 bool ScreenSetPixel(uint8_t fb_idx, uint8_t cx, uint8_t cy, uint8_t level)
