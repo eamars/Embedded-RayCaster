@@ -234,7 +234,7 @@ void RayCaster(void *args)
 	ScreenPrintStr(2, "awake in a strange", 18, 11, 28, FONT_6x8, 15);
 	ScreenPrintStr(2, "room. Mist", 10, 34, 36, FONT_6x8, 15);
 	ScreenPrintStr(2, "surrounding you are", 20, 8, 44, FONT_6x8, 15);
-	ScreenPrintStr(2, "getting thick.", 14, 25, 52, FONT_6x8, 15);
+	ScreenPrintStr(2, "getting stronger.", 18, 16, 52, FONT_6x8, 15);
 	ScreenPrintStr(2, "You need to find a", 19, 10, 60, FONT_6x8, 15);
 	ScreenPrintStr(2, "way out!", 8, 40, 68, FONT_6x8, 15);
 
