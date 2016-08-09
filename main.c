@@ -426,15 +426,21 @@ void RayCaster(void *args)
 				}
 				case BUTTON_UP:
 				{
-					if(worldMap[(int)floorf(posX + dirX * moveSpeed)][(int)floorf(posY)] == 0) posX += dirX * moveSpeed;
-					if(worldMap[(int)floorf(posX)][(int)floorf(posY + dirY * moveSpeed)] == 0) posY += dirY * moveSpeed;
+					float moveX = posX + dirX * moveSpeed;
+					float moveY = posY + dirY * moveSpeed;
+
+					if(worldMap[(int)(moveX)][(int)(posY)] == 0) posX = moveX;
+					if(worldMap[(int)(posX)][(int)(moveY)] == 0) posY += dirY * moveSpeed;
 
 					break;
 				}
 				case BUTTON_DOWN:
 				{
-					if(worldMap[(int)ceilf(posX + dirX * moveSpeed)][(int)ceilf(posY)] == 0) posX -= dirX * moveSpeed;
-					if(worldMap[(int)ceilf(posX)][(int)ceilf(posY + dirY * moveSpeed)] == 0) posY -= dirY * moveSpeed;
+					float moveX = posX - dirX * moveSpeed;
+					float moveY = posY - dirY * moveSpeed;
+
+					if(worldMap[(int)(moveX)][(int)(posY)] == 0) posX = moveX;
+					if(worldMap[(int)(posX)][(int)(moveY)] == 0) posY = moveY;
 
 					break;
 				}
