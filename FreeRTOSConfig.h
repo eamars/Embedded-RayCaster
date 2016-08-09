@@ -105,6 +105,7 @@ to exclude the API function. */
 #define configMAX_SYSCALL_INTERRUPT_PRIORITY 	( 5 << (8 - configPRIO_BITS) )
 
 /* Define to trap errors during development. */
+// DO NOT TRAP ERRORS!
 #define configASSERT(x)     (void) x
 
 #endif /* FREERTOS_CONFIG_H */
