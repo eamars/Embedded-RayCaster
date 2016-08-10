@@ -160,6 +160,28 @@ void exitInteractState(xTimerHandle pxTimer)
 }
 
 
+void takeScreenShot()
+{
+	// enter software critical section
+	taskENTER_CRITICAL();
+
+	// scan through pixels in framebuffer[0] and print on screen
+	uint8_t i, j;
+
+	for (i = 0; i < 96; i++)
+	{
+		for (j = 0; j < 128; j++)
+		{
+			printf("0x%x, ", ScreenGetPixel(0, j, i));
+		}
+		printf("\r\n");
+	}
+
+	// exit software critical section
+	taskEXIT_CRITICAL();
+}
+
+
 /*
  * The game is inspired from the idea of ray caster, which was used in the world's first
  * FPS game Wolfstein 3D.
@@ -459,6 +481,7 @@ void RayCaster(void *args)
 			{
 				case BUTTON_SELECT:
 				{
+					takeScreenShot();
 					break;
 				}
 				case BUTTON_UP:
