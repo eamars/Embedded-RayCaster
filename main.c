@@ -249,9 +249,6 @@ void RayCaster(void *args)
 
 	while (1)
 	{
-		// clear the old frame before drawing
-		ScreenClearFrameBuffer(1);
-
 		for (x = 0; x < screenWidth; x++)
 		{
 			// calculate ray position and direction
@@ -404,8 +401,6 @@ void RayCaster(void *args)
 
 			distWall = perpWallDist;
 
-			// become > 0 when the integer overflows
-			if (drawEnd < 0) drawEnd = screenHeight - 1;
 
 			// draw the floor from drawEnd to the bottom of the screen
 			for (y = drawEnd; y < screenHeight; y++)
@@ -436,7 +431,7 @@ void RayCaster(void *args)
 				ScreenSetPixel(1, x, y + verticalOffset, floor_color);
 
 				// ceiling
-				ScreenSetPixel(1, x, screenHeight - y + verticalOffset, celing_color);
+				ScreenSetPixel(1, x, screenHeight - y - 1 + verticalOffset, celing_color);
 			}
 		}
 
