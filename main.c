@@ -174,7 +174,6 @@ void takeScreenShot()
 		{
 			printf("0x%x, ", ScreenGetPixel(0, j, i));
 		}
-		printf("\r\n");
 	}
 
 	// exit software critical section
