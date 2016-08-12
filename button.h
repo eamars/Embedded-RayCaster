@@ -8,7 +8,7 @@
 #ifndef BUTTON_H_
 #define BUTTON_H_
 
-#define BUTTON_BACKOFF_DELAY 200 // in ms
+#define BUTTON_BACKOFF_DELAY 100 					// in ms
 
 #include "portable/portmacro.h"
 
@@ -24,9 +24,6 @@ enum button_type {
 
 typedef struct
 {
-	// state = 0: accept any button event
-	// state = 1: hold until timer expires
-	unsigned char state;
 	portTickType backoff_tick; // timer
 	unsigned char ulPin; // current pin of button
 

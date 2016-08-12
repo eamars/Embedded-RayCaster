@@ -50,11 +50,11 @@ void ButtonInit(xQueueHandle _buttonEventQueue)
 	IntEnable (INT_GPIOG);
 
 	// initilize a button list
-	buttonList[BUTTON_UP] = (Button_t){.state = 0, .backoff_tick = 0, .ulPin = GPIO_PIN_3};
-	buttonList[BUTTON_DOWN] = (Button_t){.state = 0, .backoff_tick = 0, .ulPin = GPIO_PIN_4};
-	buttonList[BUTTON_LEFT] = (Button_t){.state = 0, .backoff_tick = 0, .ulPin = GPIO_PIN_5};
-	buttonList[BUTTON_RIGHT] = (Button_t){.state = 0, .backoff_tick = 0, .ulPin = GPIO_PIN_6};
-	buttonList[BUTTON_SELECT] = (Button_t){.state = 0, .backoff_tick = 0, .ulPin = GPIO_PIN_7};
+	buttonList[BUTTON_UP] = (Button_t){.backoff_tick = 0, .ulPin = GPIO_PIN_3};
+	buttonList[BUTTON_DOWN] = (Button_t){.backoff_tick = 0, .ulPin = GPIO_PIN_4};
+	buttonList[BUTTON_LEFT] = (Button_t){.backoff_tick = 0, .ulPin = GPIO_PIN_5};
+	buttonList[BUTTON_RIGHT] = (Button_t){.backoff_tick = 0, .ulPin = GPIO_PIN_6};
+	buttonList[BUTTON_SELECT] = (Button_t){.backoff_tick = 0, .ulPin = GPIO_PIN_7};
 }
 
 
@@ -76,25 +76,16 @@ void ButtonInterruptHandler()
 
 	for (i = BUTTON_UP; i <= BUTTON_SELECT; i++)
 	{
-		if (GPIOPinRead(GPIO_PORTG_BASE, buttonList[i].ulPin) == 0){
+		if (GPIOPinRead(GPIO_PORTG_BASE, buttonList[i].ulPin) == 0)
+		{
+			// take period between two individual clicks
+			portTickType period = (currentTick - buttonList[i].backoff_tick) / portTICK_RATE_MS;
 
-			// debounce
-			if (buttonList[i].state == 1) // state 1 hold off until backoff timer expires
-			{
-				if ((currentTick - buttonList[i].backoff_tick) / portTICK_RATE_MS < BUTTON_BACKOFF_DELAY)
-				{
-					break;
-				}
-				else
-				{
-					buttonList[i].state = 0;
-				}
-			}
-
-			if (buttonList[i].state == 0) // state 0, accept the input
+			// if the period between two falling edges is longer than the backoff delay, the
+			// button event is considered as a single click
+			if (period > BUTTON_BACKOFF_DELAY)
 			{
 				buttonList[i].backoff_tick = currentTick; // start the backoff timer
-				buttonList[i].state = 1; // goes to state 1
 
 				// send button event to queue
 				xQueueSendFromISR(
@@ -102,7 +93,15 @@ void ButtonInterruptHandler()
 						&i,						// button
 						pdFALSE					// do not trigger context switch within interrupt handler
 				);
+				break;
 			}
+
+			// otherwise just skip
+			else
+			{
+
+			}
+
 			break;
 		}
 	}
