@@ -485,46 +485,130 @@ void RayCaster(void *args)
 				}
 				case BUTTON_UP:
 				{
-					if (gameState == 0) break;
+					switch (gameState)
+					{
+						case INTRO:
+						{
+							break;
+						}
+						case INTERACT:
+						{
+							break;
+						}
+						case GAME_END_SUCCESS:
+						{
+							break;
+						}
+						case GAME_END_FAILED:
+						{
+							break;
+						}
+						default:
+						{
+							float moveX = posX + dirX * moveSpeed;
+							float moveY = posY + dirY * moveSpeed;
 
-					float moveX = posX + dirX * moveSpeed;
-					float moveY = posY + dirY * moveSpeed;
+							if(worldMap[(int)(moveX)][(int)(posY)] == 0) posX = moveX;
+							if(worldMap[(int)(posX)][(int)(moveY)] == 0) posY = moveY;
 
-					if(worldMap[(int)(moveX)][(int)(posY)] == 0) posX = moveX;
-					if(worldMap[(int)(posX)][(int)(moveY)] == 0) posY = moveY;
+							break;
+						}
+					}
 
 					break;
 				}
 				case BUTTON_DOWN:
 				{
-					if (gameState == 0) break;
+					switch (gameState)
+					{
+						case INTRO:
+						{
+							break;
+						}
+						case INTERACT:
+						{
+							break;
+						}
+						case GAME_END_SUCCESS:
+						{
+							break;
+						}
+						case GAME_END_FAILED:
+						{
+							break;
+						}
+						default:
+						{
+							float moveX = posX - dirX * moveSpeed;
+							float moveY = posY - dirY * moveSpeed;
 
-					float moveX = posX - dirX * moveSpeed;
-					float moveY = posY - dirY * moveSpeed;
+							if(worldMap[(int)(moveX)][(int)(posY)] == 0) posX = moveX;
+							if(worldMap[(int)(posX)][(int)(moveY)] == 0) posY = moveY;
 
-					if(worldMap[(int)(moveX)][(int)(posY)] == 0) posX = moveX;
-					if(worldMap[(int)(posX)][(int)(moveY)] == 0) posY = moveY;
+							break;
+						}
+					}
 
 					break;
 				}
 				case BUTTON_LEFT:
 				{
-					float oldDirX = dirX;
-					dirX = dirX * cosf(rotSpeed) - dirY * sinf(rotSpeed);
-					dirY = oldDirX * sinf(rotSpeed) + dirY * cosf(rotSpeed);
-					float oldPlaneX = planeX;
-					planeX = planeX * cosf(rotSpeed) - planeY * sinf(rotSpeed);
-					planeY = oldPlaneX * sinf(rotSpeed) + planeY * cosf(rotSpeed);
+					switch (gameState)
+					{
+						case INTERACT:
+						{
+							break;
+						}
+						case GAME_END_SUCCESS:
+						{
+							break;
+						}
+						case GAME_END_FAILED:
+						{
+							break;
+						}
+						default:
+						{
+							float oldDirX = dirX;
+							dirX = dirX * cosf(rotSpeed) - dirY * sinf(rotSpeed);
+							dirY = oldDirX * sinf(rotSpeed) + dirY * cosf(rotSpeed);
+							float oldPlaneX = planeX;
+							planeX = planeX * cosf(rotSpeed) - planeY * sinf(rotSpeed);
+							planeY = oldPlaneX * sinf(rotSpeed) + planeY * cosf(rotSpeed);
+							break;
+						}
+					}
+
 					break;
 				}
 				case BUTTON_RIGHT:
 				{
-					float oldDirX = dirX;
-					dirX = dirX * cosf(-rotSpeed) - dirY * sinf(-rotSpeed);
-					dirY = oldDirX * sinf(-rotSpeed) + dirY * cosf(-rotSpeed);
-					float oldPlaneX = planeX;
-					planeX = planeX * cosf(-rotSpeed) - planeY * sinf(-rotSpeed);
-					planeY = oldPlaneX * sinf(-rotSpeed) + planeY * cosf(-rotSpeed);
+					switch (gameState)
+					{
+						case INTERACT:
+						{
+							break;
+						}
+						case GAME_END_SUCCESS:
+						{
+							break;
+						}
+						case GAME_END_FAILED:
+						{
+							break;
+						}
+						default:
+						{
+							float oldDirX = dirX;
+							dirX = dirX * cosf(-rotSpeed) - dirY * sinf(-rotSpeed);
+							dirY = oldDirX * sinf(-rotSpeed) + dirY * cosf(-rotSpeed);
+							float oldPlaneX = planeX;
+							planeX = planeX * cosf(-rotSpeed) - planeY * sinf(-rotSpeed);
+							planeY = oldPlaneX * sinf(-rotSpeed) + planeY * cosf(-rotSpeed);
+							break;
+						}
+					}
+
 					break;
 				}
 				default:
