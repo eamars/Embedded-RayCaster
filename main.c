@@ -60,6 +60,7 @@
 #include "button.h"
 #include "raycaster.h"
 #include "main.h"
+#include "sfx.h"
 
 #include "raycaster.h"
 #include "texture.h"
@@ -69,22 +70,20 @@
 /* Used as a loop counter to create a very crude delay. */
 #define mainDELAY_LOOP_COUNT		( 0xfffff )
 
-// game related
-typedef enum
-{
-	INTRO = 0,
-	ROAM,
-	INTERACT,
-	GAME_END_SUCCESS,
-	GAME_END_FAILED
-} Game_t;
-
 
 /* The task function. */
 void ScreenUpdateThread( void *args );
-void TimerUpdateThread(void *args);
+void CountdownTimerThread(void *args);
 
-uint8_t gameState;
+Player_t currentPlayer;
+Settings_t gameSettings;
+
+typedef struct
+{
+	float x;
+	float y;
+	uint8_t texture;
+} Sprite_t;
 
 
 void PinReset()
@@ -104,37 +103,58 @@ void PinInit()
 	SysCtlPeripheralEnable (SYSCTL_PERIPH_GPIOG);
 }
 
+void ConfigInit()
+{
+	// player settings
+	currentPlayer.posX = 22.0f;
+	currentPlayer.posY = 11.5f;
+	currentPlayer.dirX = -1.0f;
+	currentPlayer.dirY = 0.0f;
+	currentPlayer.planeX = 0.0f;
+	currentPlayer.planeY = 0.66f;
+
+	// game settings
+	gameSettings.renderFog = true;
+	gameSettings.renderFloor = false;
+	gameSettings.enableSFX = true;
+}
+
 
 int main( void ){
 	/* Set the clocking to run from the PLL at 50 MHz.  Assumes 8MHz XTAL,
 	whereas some older eval boards used 6MHz. */
 	SysCtlClockSet( SYSCTL_SYSDIV_4 | SYSCTL_USE_PLL | SYSCTL_OSC_MAIN | SYSCTL_XTAL_8MHZ );
 
-	// create queue for button event passing
-	xQueueHandle buttonEventQueue = xQueueCreate(5, sizeof(uint8_t));
-
-	// create semaphore for screen update event
-	xSemaphoreHandle screenUpdateEvent;
-	vSemaphoreCreateBinary(screenUpdateEvent);
-
-	// create an argument handler that pass multiple argument to tasks
-	ArgumentHandler handler = {.arg0 = buttonEventQueue, .arg1 = screenUpdateEvent};
-
 	// Initialize peripherials
 	PinReset();
 	PinInit();
 
 	ScreenInit();
-	ButtonInit(buttonEventQueue);
+	ButtonPollingInit();
 
+	SFXInit(SysCtlClockGet());
 
-	xTaskCreate(RayCaster, "RayCaster", 960, (void *) &handler, 1, NULL);
+	// create queue for sfx event
+	xQueueHandle sfxEventQueue = xQueueCreate(5, sizeof(uint8_t));
+
+	// create semaphore for screen update event
+	xSemaphoreHandle screenUpdateEvent;
+	xQueueHandle buttonUpdateEventQueue;
+
+	vSemaphoreCreateBinary(screenUpdateEvent);
+	buttonUpdateEventQueue = xQueueCreate(2, sizeof(uint8_t));
+
+	// create an argument handler that pass multiple argument to tasks
+	ArgumentHandler mainThreadArgumentHandler = {.arg0 = buttonUpdateEventQueue, .arg1 = screenUpdateEvent};
+	ArgumentHandler buttonThreadArgumentHandler = {.arg0 = buttonUpdateEventQueue, .arg1 = sfxEventQueue};
+
+	xTaskCreate(RayCaster, "RayCaster", 960, (void *) &mainThreadArgumentHandler, 1, NULL);
 	xTaskCreate(ScreenUpdateThread, "ScreenUpdateThread", 48, (void *) screenUpdateEvent, 2, NULL);
-	// xTaskCreate(TimerUpdateThread, "TimerUpdateThread", 240, (void *) screenUpdateEvent, 3, NULL);
+	xTaskCreate(SFXPlayerThread, "SFXPlayerThread", 48, (void *) sfxEventQueue, 1, NULL);
+	xTaskCreate(ButtonPoll, "ButtonPoll", 96, (void *) &buttonThreadArgumentHandler, 4, NULL);
 
-	/* Create the other task in exactly the same way.  Note this time that we
-	are creating the SAME task, but passing in a different parameter.  We are
-	creating two instances of a single task implementation. */
+	// initialize game settings
+	ConfigInit();
 
 	/* Start the scheduler so our tasks start executing. */
 	vTaskStartScheduler();	
@@ -147,23 +167,11 @@ int main( void ){
 /*-----------------------------------------------------------*/
 
 
-void exitIntroState(xTimerHandle pxTimer)
-{
-	gameState = 1;
-	ScreenClearFrameBuffer(2);
-}
-
-void exitInteractState(xTimerHandle pxTimer)
-{
-	gameState = 1;
-	ScreenClearFrameBuffer(2);
-}
-
 
 void takeScreenShot()
 {
 	// enter software critical section
-	taskENTER_CRITICAL();
+	portENTER_CRITICAL();
 
 	// scan through pixels in framebuffer[0] and print on screen
 	uint8_t i, j;
@@ -177,7 +185,7 @@ void takeScreenShot()
 	}
 
 	// exit software critical section
-	taskEXIT_CRITICAL();
+	portENTER_CRITICAL();
 }
 
 
@@ -191,29 +199,11 @@ void RayCaster(void *args)
 	// pass argument
 	ArgumentHandler *argumentHandler = (ArgumentHandler *) args;
 
-	xQueueHandle buttonEventQueue = (xQueueHandle) argumentHandler->arg0;
+	xQueueHandle buttonUpdateEventQueue = (xQueueHandle) argumentHandler->arg0;
 	xSemaphoreHandle screenUpdateEvent = (xSemaphoreHandle) argumentHandler->arg1;
 
 	// initialize the task tick handler
 	portTickType xLastWakeTime;
-
-	// string
-	char textBuffer[32];
-
-	// button
-	int8_t button;
-	bool enableFog = true;
-
-	// initialize game state
-	gameState = 0;
-
-	// variables about ray casting
-	float posX = 22.0f;
-	float posY = 11.5f; 		// starting position
-	float dirX = -1.0f;
-	float dirY = 0.0f;		// initial direction vector
-	float planeX = 0.0f;
-	float planeY = 0.66f;	// 2d raycaster version of camera plane
 
 	// measure framerate
 	portTickType time = 0;
@@ -222,6 +212,11 @@ void RayCaster(void *args)
 	// iterative variable
 	int x, y;
 
+	// string buffer
+	char textBuffer[32];
+
+	// zbuffer for storing sprites
+	float zbuffer[screenWidth];
 
 	// generate texture
 	memset(texture, 0x0, sizeof(texture));
@@ -250,34 +245,21 @@ void RayCaster(void *args)
 		currentDistTable[y - screenHeight / 2] = screenHeight / (2.0f * y - screenHeight);
 	}
 
-	// display a startup message on screen buffer 2
-	ScreenPrintStr(2, "You find yourself", 17, 14, 20, FONT_6x8, 15);
-	ScreenPrintStr(2, "awake in a strange", 18, 11, 28, FONT_6x8, 15);
-	ScreenPrintStr(2, "room. Mist", 10, 34, 36, FONT_6x8, 15);
-	ScreenPrintStr(2, "surrounding you are", 20, 8, 44, FONT_6x8, 15);
-	ScreenPrintStr(2, "getting stronger.", 18, 16, 52, FONT_6x8, 15);
-	ScreenPrintStr(2, "You need to find a", 19, 10, 60, FONT_6x8, 15);
-	ScreenPrintStr(2, "way out!", 8, 40, 68, FONT_6x8, 15);
-
-	// create a timer object which will be expired after 5 second
-	xTimerHandle GameIntroTimer = xTimerCreate("GameIntroTimer", 5000 * portTICK_RATE_MS, pdFALSE, NULL, exitIntroState);
-
-	// start the timer
-	xTimerStart(GameIntroTimer, 0);
-
 	// initialize the task tick handler
 	xLastWakeTime = xTaskGetTickCount();
 
 	while (1)
 	{
+		ScreenClearFrameBuffer(1);
+
 		for (x = 0; x < screenWidth; x++)
 		{
 			// calculate ray position and direction
 			float cameraX = 2 * x / (float) screenWidth - 1; 		// x coordinate in camera space
-			float rayPosX = posX;
-			float rayPosY = posY;
-			float rayDirX = dirX + planeX * cameraX;
-			float rayDirY = dirY + planeY * cameraX;
+			float rayPosX = currentPlayer.posX;
+			float rayPosY = currentPlayer.posY;
+			float rayDirX = currentPlayer.dirX + currentPlayer.planeX * cameraX;
+			float rayDirY = currentPlayer.dirY + currentPlayer.planeY * cameraX;
 
 			// which box of the map we're in
 			int mapX = (int) rayPosX;
@@ -384,7 +366,7 @@ void RayCaster(void *args)
 					color >>= 1;
 				}
 
-				if (perpWallDist > VIEW_DIST_WALL && enableFog)
+				if (perpWallDist > VIEW_DIST_WALL && gameSettings.renderFog)
 				{
 					color >>= (int)(perpWallDist - VIEW_DIST_WALL);
 				}
@@ -393,66 +375,140 @@ void RayCaster(void *args)
 				ScreenSetPixel(1, x, y + verticalOffset, color);
 			}
 
+			// set the zbuffer for sprite casting
+			zbuffer[x] = perpWallDist;
+
+
 			// floor casting
-			float floorXWall, floorYWall;		//x, y position of the floor texel at the bottom of the wall
-
-			// 4 different wall directions possible
-			if (side == 0 && rayDirX > 0)
+			if (gameSettings.renderFloor)
 			{
-				floorXWall = mapX;
-				floorYWall = mapY + wallX;
-			}
-			else if (side == 0 && rayDirX < 0)
-			{
-				floorXWall = mapX + 1.0f;
-				floorYWall = mapY + wallX;
-			}
-			else if (side == 1 && rayDirY > 0)
-			{
-				floorXWall = mapX + wallX;
-				floorYWall = mapY;
-			}
-			else if (side == 1 && rayDirY < 0)
-			{
-				floorXWall = mapX + wallX;
-				floorYWall = mapY + 1.0f;
-			}
+				// floor casting
+				float floorXWall, floorYWall;		//x, y position of the floor texel at the bottom of the wall
 
-			float distWall, currentDist;
-
-			distWall = perpWallDist;
-
-
-			// draw the floor from drawEnd to the bottom of the screen
-			for (y = drawEnd; y < screenHeight; y++)
-			{
-				// currentDist = screenHeight / (2.0f * y - screenHeight);	// small lookup table can be used instead
-				currentDist = currentDistTable[y - screenHeight / 2];
-
-				float weight = currentDist / distWall;
-
-				float currentFloorX = weight * floorXWall + (1.0f - weight) * posX;
-				float currentFloorY = weight * floorYWall + (1.0f - weight) * posY;
-
-				int floorTexX, floorTexY;
-				floorTexX = ((int) (currentFloorX * texWidth)) % texWidth;
-				floorTexY = ((int) (currentFloorY * texHeight)) % texHeight;
-
-				uint8_t floor_color = texture[TEXTURE_STONE_BRICK][texWidth * floorTexY + floorTexX] >> 1;
-				uint8_t celing_color = texture[TEXTURE_GREYSTONE][texWidth * floorTexY + floorTexX];
-
-				if (currentDist > VIEW_DIST_FLOOR && enableFog)
+				// 4 different wall directions possible
+				if (side == 0 && rayDirX > 0)
 				{
-					uint8_t fade_ratio = (int)(perpWallDist - VIEW_DIST_FLOOR);
-					floor_color >>= fade_ratio;
-					celing_color >>= fade_ratio;
+					floorXWall = mapX;
+					floorYWall = mapY + wallX;
+				}
+				else if (side == 0 && rayDirX < 0)
+				{
+					floorXWall = mapX + 1.0f;
+					floorYWall = mapY + wallX;
+				}
+				else if (side == 1 && rayDirY > 0)
+				{
+					floorXWall = mapX + wallX;
+					floorYWall = mapY;
+				}
+				else if (side == 1 && rayDirY < 0)
+				{
+					floorXWall = mapX + wallX;
+					floorYWall = mapY + 1.0f;
 				}
 
-				// floor
-				ScreenSetPixel(1, x, y + verticalOffset, floor_color);
+				float distWall, currentDist;
 
-				// ceiling
-				ScreenSetPixel(1, x, screenHeight - y - 1 + verticalOffset, celing_color);
+				distWall = perpWallDist;
+
+				// draw the floor from drawEnd to the bottom of the screen
+				for (y = drawEnd; y < screenHeight; y++)
+				{
+					// currentDist = screenHeight / (2.0f * y - screenHeight);	// small lookup table can be used instead
+					currentDist = currentDistTable[y - screenHeight / 2];
+
+					float weight = currentDist / distWall;
+
+					float currentFloorX = weight * floorXWall + (1.0f - weight) * currentPlayer.posX;
+					float currentFloorY = weight * floorYWall + (1.0f - weight) * currentPlayer.posY;
+
+					int floorTexX, floorTexY;
+					floorTexX = ((int) (currentFloorX * texWidth)) % texWidth;
+					floorTexY = ((int) (currentFloorY * texHeight)) % texHeight;
+
+					uint8_t floor_color = texture[TEXTURE_STONE_BRICK][texWidth * floorTexY + floorTexX] >> 1;
+					uint8_t celing_color = texture[TEXTURE_GREYSTONE][texWidth * floorTexY + floorTexX];
+
+					if (currentDist > VIEW_DIST_FLOOR && gameSettings.renderFog)
+					{
+						uint8_t fade_ratio = (int)(perpWallDist - VIEW_DIST_FLOOR);
+						floor_color >>= fade_ratio;
+						celing_color >>= fade_ratio;
+					}
+
+					// floor
+					ScreenSetPixel(1, x, y + verticalOffset, floor_color);
+
+					// ceiling
+					ScreenSetPixel(1, x, screenHeight - y - 1 + verticalOffset, celing_color);
+				}
+			}
+
+			// sprite casting
+			// assume there is a sprite at (20,10)
+			Sprite_t sprite = {.x = 20.0f, .y = 10.0f, .texture = 2};
+
+			// take square distance
+			float spriteDistance = (
+					(currentPlayer.posX - sprite.x) * (currentPlayer.posX - sprite.x) +
+					(currentPlayer.posY - sprite.y) * (currentPlayer.posY - sprite.y)
+			);
+
+			// do the projection and draw item
+			float spriteX = sprite.x - currentPlayer.posX;
+			float spriteY = sprite.y - currentPlayer.posY;
+
+			//transform sprite with the inverse camera matrix
+			  // [ planeX   dirX ] -1                                       [ dirY      -dirX ]
+			  // [               ]       =  1/(planeX*dirY-dirX*planeY) *   [                 ]
+			  // [ planeY   dirY ]                                          [ -planeY  planeX ]
+			float invDet = 1.0f / (currentPlayer.planeX * currentPlayer.dirY - currentPlayer.dirX * currentPlayer.planeY);
+			float transformX = invDet * (currentPlayer.dirY * spriteX - currentPlayer.dirX * spriteY);
+			float transformY = invDet * (-currentPlayer.planeY * spriteX + currentPlayer.planeX * spriteY);
+
+			int spriteScreenX = (int)((screenWidth / 2 * (1 + transformX / transformY)));
+			// scalling and moving the sprite
+#define uDiv 1
+#define vDiv 1
+#define vMove 0.0f
+
+			int vMoveScreen = (int) (vMove / transformY);
+
+			// calculate height of the sprite on screen
+			int spriteHeight = abs((int)(screenHeight / transformY));
+
+			// calculate lowest and highest pixel to fill in current stripe
+			int drawStartY = -spriteHeight / 2 + screenHeight / 2 + vMoveScreen;
+			if (drawStart < 0) drawStartY = 0;
+
+			int drawEndY = spriteHeight / 2 + screenHeight / 2 + vMoveScreen;
+			if (drawEnd >= screenHeight) drawEndY = screenHeight - 1;
+
+			// calculate width of the sprite
+			int spriteWidth = abs((int)(screenHeight / transformY));
+
+			int drawStartX = -spriteWidth / 2 + spriteScreenX;
+			if (drawStartX < 0) drawStartX = 0;
+
+			int drawEndX = spriteWidth / 2 + spriteScreenX;
+			if (drawEndX >= screenWidth) drawEndX = screenWidth - 1;
+
+			// loop through every vertical stripe of the sprite on screen
+			int stripe;
+			for (stripe = drawStartX; stripe < drawEndX; stripe++)
+			{
+				int texX = (int)(256 * (stripe - (-spriteWidth / 2 + spriteScreenX)) * texWidth / spriteWidth) / 256;
+				if (transformY > 0 && stripe > 0 && stripe < screenWidth && transformY < zbuffer[stripe])
+				{
+					for (y = drawStartY; y < drawEndY; y++)
+					{
+						int d = (y - vMoveScreen) * 256 - screenHeight * 128 + spriteHeight * 128;
+						int texY = ((d * texHeight) / spriteHeight) / 256;
+
+						uint8_t color = texture[sprite.texture][texWidth * texY + texX];
+						ScreenSetPixel(1, stripe, y, color);
+					}
+				}
 			}
 		}
 
@@ -460,168 +516,21 @@ void RayCaster(void *args)
 		oldTime = time;
 		time = xTaskGetTickCount();
 		portTickType frameTime = (time - oldTime) * portTICK_RATE_MS;
-		sprintf(textBuffer, "FPS:%d PL:(%d,%d)", 1000 / frameTime, (int)(planeX * 57.296f), (int)(planeY * 57.296f));
+		sprintf(textBuffer, "FPS:%d PL:(%d,%d)", 1000 / frameTime, (int)(currentPlayer.planeX * 57.296f), (int)(currentPlayer.planeY * 57.296f));
 		ScreenPrintStr(1, textBuffer, strlen(textBuffer), 0, 0, FONT_6x8, 15);
 
 		// position
-		sprintf(textBuffer, "X:%d Y:%d DI:(%d,%d)", (int)posX, (int)posY, (int)(dirX * 57.296f),  (int)(dirY * 57.296f));
+		sprintf(textBuffer, "X:%d Y:%d DI:(%d,%d)", (int)currentPlayer.posX, (int)currentPlayer.posY, (int)(currentPlayer.dirX * 57.296f),  (int)(currentPlayer.dirY * 57.296f));
 		ScreenPrintStr(1, textBuffer, strlen(textBuffer), 0, 88, FONT_6x8, 15);
-
-		// float frameTimeS = frameTime / 1000.0f;
-
-		// speed modifier
-		float moveSpeed = 0.2;
-		float rotSpeed = 0.1;
-
-		// get user input
-		if (xQueueReceive(buttonEventQueue, &button, 0) == pdPASS)
-		{
-			switch (button)
-			{
-				case BUTTON_SELECT:
-				{
-					takeScreenShot();
-					break;
-				}
-				case BUTTON_UP:
-				{
-					switch (gameState)
-					{
-						case INTRO:
-						{
-							break;
-						}
-						case INTERACT:
-						{
-							break;
-						}
-						case GAME_END_SUCCESS:
-						{
-							break;
-						}
-						case GAME_END_FAILED:
-						{
-							break;
-						}
-						default:
-						{
-							float moveX = posX + dirX * moveSpeed;
-							float moveY = posY + dirY * moveSpeed;
-
-							if(worldMap[(int)(moveX)][(int)(posY)] == 0) posX = moveX;
-							if(worldMap[(int)(posX)][(int)(moveY)] == 0) posY = moveY;
-
-							break;
-						}
-					}
-
-					break;
-				}
-				case BUTTON_DOWN:
-				{
-					switch (gameState)
-					{
-						case INTRO:
-						{
-							break;
-						}
-						case INTERACT:
-						{
-							break;
-						}
-						case GAME_END_SUCCESS:
-						{
-							break;
-						}
-						case GAME_END_FAILED:
-						{
-							break;
-						}
-						default:
-						{
-							float moveX = posX - dirX * moveSpeed;
-							float moveY = posY - dirY * moveSpeed;
-
-							if(worldMap[(int)(moveX)][(int)(posY)] == 0) posX = moveX;
-							if(worldMap[(int)(posX)][(int)(moveY)] == 0) posY = moveY;
-
-							break;
-						}
-					}
-
-					break;
-				}
-				case BUTTON_LEFT:
-				{
-					switch (gameState)
-					{
-						case INTERACT:
-						{
-							break;
-						}
-						case GAME_END_SUCCESS:
-						{
-							break;
-						}
-						case GAME_END_FAILED:
-						{
-							break;
-						}
-						default:
-						{
-							float oldDirX = dirX;
-							dirX = dirX * cosf(rotSpeed) - dirY * sinf(rotSpeed);
-							dirY = oldDirX * sinf(rotSpeed) + dirY * cosf(rotSpeed);
-							float oldPlaneX = planeX;
-							planeX = planeX * cosf(rotSpeed) - planeY * sinf(rotSpeed);
-							planeY = oldPlaneX * sinf(rotSpeed) + planeY * cosf(rotSpeed);
-							break;
-						}
-					}
-
-					break;
-				}
-				case BUTTON_RIGHT:
-				{
-					switch (gameState)
-					{
-						case INTERACT:
-						{
-							break;
-						}
-						case GAME_END_SUCCESS:
-						{
-							break;
-						}
-						case GAME_END_FAILED:
-						{
-							break;
-						}
-						default:
-						{
-							float oldDirX = dirX;
-							dirX = dirX * cosf(-rotSpeed) - dirY * sinf(-rotSpeed);
-							dirY = oldDirX * sinf(-rotSpeed) + dirY * cosf(-rotSpeed);
-							float oldPlaneX = planeX;
-							planeX = planeX * cosf(-rotSpeed) - planeY * sinf(-rotSpeed);
-							planeY = oldPlaneX * sinf(-rotSpeed) + planeY * cosf(-rotSpeed);
-							break;
-						}
-					}
-
-					break;
-				}
-				default:
-				{
-					break;
-				}
-			}
-		}
 
 		// we don't care if we successfully give the semaphore or not since we only need to
 		// update the screen once no matter how many write operations applied to the screen
 		// buffer
 		xSemaphoreGive(screenUpdateEvent);
+
+		// wait for user input
+		uint8_t button_type;
+		xQueueReceive(buttonUpdateEventQueue, &button_type, portMAX_DELAY);
 
 		// run this task at precisely at 100Hz
 		vTaskDelayUntil(&xLastWakeTime, (50 / portTICK_RATE_MS));
@@ -646,28 +555,6 @@ void ScreenUpdateThread( void *args )
 	}
 }
 
-void TimerUpdateThread(void *args)
-{
-	// pass argument
-	xSemaphoreHandle screenUpdateEvent = (xSemaphoreHandle) args;
-
-	portTickType xLastWakeTime = xTaskGetTickCount();
-
-	char buffer[16];
-	long counter = 0;
-
-	while (1)
-	{
-		memset(buffer, 0x0, sizeof(buffer));
-		sprintf(buffer, "count:%d", counter++);
-		ScreenClearFrameBuffer(2);
-		ScreenPrintStr(2, buffer, strlen(buffer), 50, 50, FONT_6x8, 7);
-		//ScreenDrawBox(2, 50, 50, 70, 70, 7);
-
-		// execute this task at 1 hz
-		vTaskDelayUntil(&xLastWakeTime, (1000 / portTICK_RATE_MS));
-	}
-}
 
 /*-----------------------------------------------------------*/
 

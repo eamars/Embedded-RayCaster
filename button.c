@@ -8,11 +8,13 @@
 
 #include <stdint.h>
 #include <stdio.h>
+#include <math.h>
 
 /* FreeRTOS includes. */
 #include "include/FreeRTOS.h"
 #include "include/task.h"
 #include "include/queue.h"
+#include "include/semphr.h"
 
 /* Stellaris library includes. */
 #include "inc/hw_types.h"
@@ -21,89 +23,210 @@
 #include "driverlib/gpio.h"
 #include "inc/hw_ints.h"
 #include "driverlib/interrupt.h"
+
+#include "main.h"
 #include "button.h"
+#include "world_map.h"
+#include "sfx.h"
 
-Button_t buttonList[5];
-xQueueHandle buttonEventQueue;
 
-void ButtonInit(xQueueHandle _buttonEventQueue)
+//*****************************************************************************
+//
+// The debounced state of the five push buttons.  The bit positions correspond
+// to:
+//
+//     0 - Up
+//     1 - Down
+//     2 - Left
+//     3 - Right
+//     4 - Select
+//
+//*****************************************************************************
+unsigned char g_ucSwitches = 0x1f;
+uint8_t BUTTON_EVENT;
+
+//*****************************************************************************
+//
+// The vertical counter used to debounce the push buttons.  The bit positions
+// are the same as g_ucSwitches.
+//
+//*****************************************************************************
+static unsigned char g_ucSwitchClockA = 0;
+static unsigned char g_ucSwitchClockB = 0;
+
+// player
+extern Player_t currentPlayer;
+
+// game settings
+extern Settings_t gameSettings;
+
+void ButtonPollingInit()
 {
-	// assign button queue
-	buttonEventQueue = _buttonEventQueue;
-
-	// regsiter the handler for port G into the vector table
-	GPIOPortIntRegister (GPIO_PORTG_BASE, ButtonInterruptHandler);
-
+	// initialize ports
 	// enable the PG3 to PG7 to read the five buttons
 	GPIODirModeSet(GPIO_PORTG_BASE, GPIO_PIN_3 | GPIO_PIN_4 | GPIO_PIN_5 | GPIO_PIN_6 | GPIO_PIN_7, GPIO_DIR_MODE_IN);
 
 	GPIOPadConfigSet(GPIO_PORTG_BASE, GPIO_PIN_3 | GPIO_PIN_4 | GPIO_PIN_5 | GPIO_PIN_6 | GPIO_PIN_7, GPIO_STRENGTH_2MA,
 						 GPIO_PIN_TYPE_STD_WPU);
-
-	// trigger the interrupt on falling edge
-	GPIOIntTypeSet (GPIO_PORTG_BASE, GPIO_PIN_3 | GPIO_PIN_4 | GPIO_PIN_5 | GPIO_PIN_6 | GPIO_PIN_7, GPIO_FALLING_EDGE);
-
-	// enable the pin change interrupt
-	GPIOPinIntEnable (GPIO_PORTG_BASE, GPIO_PIN_3 | GPIO_PIN_4 | GPIO_PIN_5 | GPIO_PIN_6 | GPIO_PIN_7);
-
-	// enable interrupt on port G
-	IntEnable (INT_GPIOG);
-
-	// initilize a button list
-	buttonList[BUTTON_UP] = (Button_t){.backoff_tick = 0, .ulPin = GPIO_PIN_3};
-	buttonList[BUTTON_DOWN] = (Button_t){.backoff_tick = 0, .ulPin = GPIO_PIN_4};
-	buttonList[BUTTON_LEFT] = (Button_t){.backoff_tick = 0, .ulPin = GPIO_PIN_5};
-	buttonList[BUTTON_RIGHT] = (Button_t){.backoff_tick = 0, .ulPin = GPIO_PIN_6};
-	buttonList[BUTTON_SELECT] = (Button_t){.backoff_tick = 0, .ulPin = GPIO_PIN_7};
 }
 
-
-void ButtonInterruptHandler()
+void ButtonPoll( void *args )
 {
-	int8_t i;
-	portTickType currentTick;
+	// pass parameters
+	ArgumentHandler *argumentHandler = (ArgumentHandler *) args;
 
-	currentTick = xTaskGetTickCountFromISR();
+	xQueueHandle buttonUpdateEventQueue = (xQueueHandle) argumentHandler->arg0;
+	xSemaphoreHandle sfxEventQueue = (xSemaphoreHandle) argumentHandler->arg1;
 
-	// clean the current interrupt state
-	GPIOPinIntClear (GPIO_PORTG_BASE,
-			buttonList[BUTTON_UP].ulPin |
-			buttonList[BUTTON_DOWN].ulPin |
-			buttonList[BUTTON_LEFT].ulPin |
-			buttonList[BUTTON_RIGHT].ulPin |
-			buttonList[BUTTON_SELECT].ulPin
-	);
+	// initialize the task tick handler
+	portTickType xLastWakeTime;
 
-	for (i = BUTTON_UP; i <= BUTTON_SELECT; i++)
+	uint8_t sfx;
+
+	// initialize the task tick handler
+	xLastWakeTime = xTaskGetTickCount();
+	while (1)
 	{
-		if (GPIOPinRead(GPIO_PORTG_BASE, buttonList[i].ulPin) == 0)
+		unsigned long ulData, ulDelta;
+
+		// read the state of the push buttons
+		ulData = ((GPIOPinRead(GPIO_PORTG_BASE, (GPIO_PIN_3 | GPIO_PIN_4 |
+												GPIO_PIN_5 | GPIO_PIN_6)) >> 3) |
+				  (GPIOPinRead(GPIO_PORTG_BASE, GPIO_PIN_7) >> 3));
+
+		// determine the switches that are at a different state than the debounced state
+		ulDelta = ulData ^ g_ucSwitches;
+
+		// increment the clocks by one
+		g_ucSwitchClockA ^= g_ucSwitchClockB;
+		g_ucSwitchClockB = ~g_ucSwitchClockB;
+
+		// reset the clocks corresponding to switches that have not changed state
+		g_ucSwitchClockA &= ulDelta;
+		g_ucSwitchClockB &= ulDelta;
+
+		// get the new debounced switch state
+		g_ucSwitches &= g_ucSwitchClockA | g_ucSwitchClockB;
+		g_ucSwitches |= (~(g_ucSwitchClockA | g_ucSwitchClockB)) & ulData;
+
+		// determine the switches that just changed debounced state
+		ulDelta ^= (g_ucSwitchClockA | g_ucSwitchClockB);
+
+		// four direction button
+		uint8_t button_type = BUTTON_IDLE;
+
+		switch (g_ucSwitches & 0x0f)
 		{
-			// take period between two individual clicks
-			portTickType period = (currentTick - buttonList[i].backoff_tick) / portTICK_RATE_MS;
-
-			// if the period between two falling edges is longer than the backoff delay, the
-			// button event is considered as a single click
-			if (period > BUTTON_BACKOFF_DELAY)
+			case 0x0e:	// up
 			{
-				buttonList[i].backoff_tick = currentTick; // start the backoff timer
+				button_type = BUTTON_POS_MOVE;
 
-				// send button event to queue
-				xQueueSendFromISR(
-						buttonEventQueue,		// queue
-						&i,						// button
-						pdFALSE					// do not trigger context switch within interrupt handler
-				);
+				float moveX = currentPlayer.posX + currentPlayer.dirX * MOVE_SPEED;
+				float moveY = currentPlayer.posY + currentPlayer.dirY * MOVE_SPEED;
+
+				if(worldMap[(int)(moveX)][(int)(currentPlayer.posY)] == 0)
+				{
+					currentPlayer.posX = moveX;
+
+					if (gameSettings.enableSFX)
+					{
+						sfx = SFX_WALL;
+						xQueueSend(sfxEventQueue, &sfx, 0);
+					}
+				}
+
+				if(worldMap[(int)(currentPlayer.posX)][(int)(moveY)] == 0)
+				{
+					currentPlayer.posY = moveY;
+
+					if (gameSettings.enableSFX)
+					{
+						sfx = SFX_WALL;
+						xQueueSend(sfxEventQueue, &sfx, 0);
+					}
+				}
+
 				break;
 			}
-
-			// otherwise just skip
-			else
+			case 0x0d: 	// down
 			{
+				button_type = BUTTON_POS_MOVE;
 
+				float moveX = currentPlayer.posX - currentPlayer.dirX * MOVE_SPEED;
+				float moveY = currentPlayer.posY - currentPlayer.dirY * MOVE_SPEED;
+
+				if(worldMap[(int)(moveX)][(int)(currentPlayer.posY)] == 0)
+				{
+					currentPlayer.posX = moveX;
+
+					if (gameSettings.enableSFX)
+					{
+						sfx = SFX_WALL;
+						xQueueSend(sfxEventQueue, &sfx, 0);
+					}
+				}
+
+				if(worldMap[(int)(currentPlayer.posX)][(int)(moveY)] == 0)
+				{
+					currentPlayer.posY = moveY;
+
+					if (gameSettings.enableSFX)
+					{
+						sfx = SFX_WALL;
+						xQueueSend(sfxEventQueue, &sfx, 0);
+					}
+				}
+
+				break;
 			}
+			case 0x0b: 	// left
+			{
+				button_type = BUTTON_DIR_MOVE;
 
-			break;
+				float oldDirX = currentPlayer.dirX;
+				currentPlayer.dirX = currentPlayer.dirX * COS_ROT_SPEED - currentPlayer.dirY * SIN_ROT_SPEED;
+				currentPlayer.dirY = oldDirX * SIN_ROT_SPEED + currentPlayer.dirY * COS_ROT_SPEED;
+
+				float oldPlaneX = currentPlayer.planeX;
+				currentPlayer.planeX = currentPlayer.planeX * COS_ROT_SPEED - currentPlayer.planeY * SIN_ROT_SPEED;
+				currentPlayer.planeY = oldPlaneX * SIN_ROT_SPEED + currentPlayer.planeY * COS_ROT_SPEED;
+				break;
+			}
+			case 0x07: 	// right
+			{
+				button_type = BUTTON_DIR_MOVE;
+
+				float oldDirX = currentPlayer.dirX;
+				currentPlayer.dirX = currentPlayer.dirX * COS_ROT_SPEED_N - currentPlayer.dirY * SIN_ROT_SPEED_N;
+				currentPlayer.dirY = oldDirX * SIN_ROT_SPEED_N + currentPlayer.dirY * COS_ROT_SPEED_N;
+
+				float oldPlaneX = currentPlayer.planeX;
+				currentPlayer.planeX = currentPlayer.planeX * COS_ROT_SPEED_N - currentPlayer.planeY * SIN_ROT_SPEED_N;
+				currentPlayer.planeY = oldPlaneX * SIN_ROT_SPEED_N + currentPlayer.planeY * COS_ROT_SPEED_N;
+
+				break;
+			}
+			default:
+				break;
 		}
+
+		// select
+		if((ulDelta & 0x10) && !(g_ucSwitches & 0x10))
+		{
+			if (gameSettings.enableSFX)
+			{
+				sfx = SFX_FIRE;
+				xQueueSend(sfxEventQueue, &sfx, 0);
+			}
+		}
+
+		// pass update event to main thread
+		if (button_type != BUTTON_IDLE)
+		{
+			xQueueSend(buttonUpdateEventQueue, &button_type, 0);
+		}
+
+
+		vTaskDelayUntil(&xLastWakeTime, (20 / portTICK_RATE_MS));
 	}
 }
-

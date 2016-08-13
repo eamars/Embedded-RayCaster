@@ -8,31 +8,23 @@
 #ifndef BUTTON_H_
 #define BUTTON_H_
 
-#define BUTTON_BACKOFF_DELAY 100 					// in ms
+#include <stdint.h>
 
 #include "portable/portmacro.h"
 
 #include "include/queue.h"
 
 enum button_type {
-	BUTTON_UP = 0,
-	BUTTON_DOWN,
-	BUTTON_LEFT,
-	BUTTON_RIGHT,
-	BUTTON_SELECT,
+	BUTTON_POS_MOVE = 0,
+	BUTTON_DIR_MOVE,
+	BUTTON_IDLE,
+	BUTTON_SELECT
 };
 
-typedef struct
-{
-	portTickType backoff_tick; // timer
-	unsigned char ulPin; // current pin of button
+extern uint8_t BUTTON_EVENT;
 
-} Button_t;
-
-void ButtonInit(xQueueHandle _buttonEventQueue);
-void ButtonInterruptHandler();
-void ButtonHandlerThread( void *args );
-
+void ButtonPollingInit();
+void ButtonPoll( void *args );
 
 
 #endif /* BUTTON_H_ */

@@ -8,10 +8,20 @@
 #ifndef MAIN_H_
 #define MAIN_H_
 
+#include <stdbool.h>
+
 #define screenWidth 128
 #define screenHeight 96
 
 #define verticalOffset 0
+
+#define MOVE_SPEED 0.05f
+
+// speed = 0.05f
+#define COS_ROT_SPEED 0.999f
+#define SIN_ROT_SPEED 0.050f
+#define COS_ROT_SPEED_N 0.999f
+#define SIN_ROT_SPEED_N -0.050f
 
 typedef struct
 {
@@ -20,6 +30,21 @@ typedef struct
 	void *arg2;
 	void *arg3;
 } ArgumentHandler;
+
+typedef struct
+{
+	float posX, posY;			// current player location
+	float dirX, dirY;			// current player viewing direction
+	float planeX, planeY;		// player field of view
+	uint8_t state;				// state of player (dead or alive)
+} Player_t;
+
+typedef struct
+{
+	bool renderFog;
+	bool renderFloor;
+	bool enableSFX;
+} Settings_t;
 
 
 #endif /* MAIN_H_ */
