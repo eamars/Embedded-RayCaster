@@ -6,6 +6,7 @@
  */
 
 #include <stdint.h>
+#include <stdio.h>
 #include "sfx.h"
 
 #include "inc/hw_memmap.h"
@@ -196,13 +197,36 @@ void SFXPlayerThread(void *args)
 		// block wait until main thread gives instruction
 		xQueueReceive(sfxEventQueue, &sfx_idx, portMAX_DELAY);
 
-		// don't play sound if device is busy
-		if (ClassDBusy())
+		// if normal task, then check for any tune is playing
+		if (sfx_idx & SFX_NORMAL)
+		{
+			// don't play sound if device is busy
+			if (ClassDBusy())
+			{
+				continue;
+			}
+		}
+
+		// if preempt task, then stop current tune and play new one
+		else if (sfx_idx & SFX_PREEMPT)
+		{
+			// stop current tune
+			ClassDStop();
+
+			// wait until fully stopped
+			while (ClassDBusy())
+			{
+
+			}
+		}
+
+		// ignore other cases
+		else
 		{
 			continue;
 		}
 
-		switch (sfx_idx)
+		switch (sfx_idx & 0x0f) 	// filter sfx flags
 		{
 			case SFX_FIRE:
 			{

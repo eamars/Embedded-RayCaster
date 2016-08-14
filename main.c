@@ -461,10 +461,12 @@ void RayCaster(void *args)
 			Sprite_t sprite = {.x = 20.0f, .y = 10.0f, .texture = 2};
 
 			// take square distance
+			/*
 			float spriteDistance = (
 					(currentPlayer.posX - sprite.x) * (currentPlayer.posX - sprite.x) +
 					(currentPlayer.posY - sprite.y) * (currentPlayer.posY - sprite.y)
 			);
+			*/
 
 			// do the projection and draw item
 			float spriteX = sprite.x - currentPlayer.posX;

@@ -10,8 +10,14 @@
 
 enum sfx_type
 {
-	SFX_FIRE = 0,
-	SFX_WALL,
+	SFX_FIRE = 0x0,			// 0bxxxx0000
+	SFX_WALL = 0x1,			// 0bxxxx0001
+};
+
+enum sfx_flags
+{
+	SFX_PREEMPT = 0x80,		// 0b1000xxxx
+	SFX_NORMAL = 0x40,		// 0b0100xxxx
 };
 
 void SFXInit(unsigned long clock);

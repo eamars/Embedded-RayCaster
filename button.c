@@ -130,7 +130,7 @@ void ButtonPoll( void *args )
 
 					if (gameSettings.enableSFX)
 					{
-						sfx = SFX_WALL;
+						sfx = SFX_WALL | SFX_NORMAL;
 						xQueueSend(sfxEventQueue, &sfx, 0);
 					}
 				}
@@ -141,7 +141,7 @@ void ButtonPoll( void *args )
 
 					if (gameSettings.enableSFX)
 					{
-						sfx = SFX_WALL;
+						sfx = SFX_WALL | SFX_NORMAL;
 						xQueueSend(sfxEventQueue, &sfx, 0);
 					}
 				}
@@ -161,7 +161,7 @@ void ButtonPoll( void *args )
 
 					if (gameSettings.enableSFX)
 					{
-						sfx = SFX_WALL;
+						sfx = SFX_WALL | SFX_NORMAL;
 						xQueueSend(sfxEventQueue, &sfx, 0);
 					}
 				}
@@ -172,7 +172,7 @@ void ButtonPoll( void *args )
 
 					if (gameSettings.enableSFX)
 					{
-						sfx = SFX_WALL;
+						sfx = SFX_WALL | SFX_NORMAL;
 						xQueueSend(sfxEventQueue, &sfx, 0);
 					}
 				}
@@ -215,7 +215,7 @@ void ButtonPoll( void *args )
 		{
 			if (gameSettings.enableSFX)
 			{
-				sfx = SFX_FIRE;
+				sfx = SFX_FIRE | SFX_PREEMPT;
 				xQueueSend(sfxEventQueue, &sfx, 0);
 			}
 		}
