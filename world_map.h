@@ -12,6 +12,7 @@
 
 #define mapWidth 24
 #define mapHeight 24
+#define adjDist 34
 
 extern uint8_t worldMap[mapWidth][mapHeight];
 
