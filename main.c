@@ -77,13 +77,7 @@ void CountdownTimerThread(void *args);
 
 Player_t currentPlayer;
 Settings_t gameSettings;
-
-typedef struct
-{
-	float x;
-	float y;
-	uint8_t texture;
-} Sprite_t;
+Sprite_t sprite = {.x = 20.0f, .y = 10.0f, .texture = TEXTURE_STEVE};
 
 
 void PinReset()
@@ -255,6 +249,9 @@ void RayCaster(void *args)
 
 		for (x = 0; x < screenWidth; x++)
 		{
+			/*
+			 * Wall Casting start
+			 */
 			// calculate ray position and direction
 			float cameraX = 2 * x / (float) screenWidth - 1; 		// x coordinate in camera space
 			float rayPosX = currentPlayer.posX;
@@ -363,26 +360,129 @@ void RayCaster(void *args)
 			if (side == 0 && rayDirX > 0) texX = texWidth - texX - 1;
 			if (side == 1 && rayDirY < 0) texX = texWidth - texX - 1;
 
-			for (y = drawStart; y < drawEnd; y++)
+			/*
+			 * Wall Casting End
+			 */
+
+			/*
+			 * Sprite Casting Start
+			 */
+			// do the projection and draw item
+			float spriteX = sprite.x - currentPlayer.posX;
+			float spriteY = sprite.y - currentPlayer.posY;
+
+			//transform sprite with the inverse camera matrix
+			  // [ planeX   dirX ] -1                                       [ dirY      -dirX ]
+			  // [               ]       =  1/(planeX*dirY-dirX*planeY) *   [                 ]
+			  // [ planeY   dirY ]                                          [ -planeY  planeX ]
+			float invDet = 1.0f / (currentPlayer.planeX * currentPlayer.dirY - currentPlayer.dirX * currentPlayer.planeY);
+			float transformX = invDet * (currentPlayer.dirY * spriteX - currentPlayer.dirX * spriteY);
+			float transformY = invDet * (-currentPlayer.planeY * spriteX + currentPlayer.planeX * spriteY);
+
+			int spriteScreenX = (int)((screenWidth / 2 * (1 + transformX / transformY)));
+
+			// scalling and moving the sprite
+			#define uDiv 1
+			#define vDiv 1
+			#define vMove 0.0f
+
+			int vMoveScreen = (int) (vMove / transformY);
+
+			// calculate height of the sprite on screen
+			int spriteHeight = abs((int)(screenHeight / transformY));
+
+			// calculate lowest and highest pixel to fill in current stripe
+			int drawStartY = -spriteHeight / 2 + screenHeight / 2 + vMoveScreen;
+			if (drawStart < 0) drawStartY = 0;
+
+			int drawEndY = spriteHeight / 2 + screenHeight / 2 + vMoveScreen;
+			if (drawEnd >= screenHeight) drawEndY = screenHeight - 1;
+
+			// calculate width of the sprite
+			int spriteWidth = abs((int)(screenHeight / transformY));
+
+			int drawStartX = -spriteWidth / 2 + spriteScreenX;
+			if (drawStartX < 0) drawStartX = 0;
+
+			int drawEndX = spriteWidth / 2 + spriteScreenX;
+			if (drawEndX >= screenWidth) drawEndX = screenWidth - 1;
+
+			float spriteDist = sqrt(spriteX * spriteX + spriteY * spriteY);
+			/*
+			 * Sprite Casting End
+			 */
+
+			/*
+			 * Scanning through pixels
+			 */
+			for (y = 0; y < screenHeight; y++)
 			{
-				int d = y * 256 - screenHeight * 128 + lineHeight * 128;
-				int texY = ((d * texHeight) / lineHeight) / 256;
 
-				uint8_t color = texture[texNum][texHeight * texY + texX];
-
-				// make color darker for y-side
-				if (side == 1)
+				// draw wall
+				if (y >= drawStart && y < drawEnd)
 				{
-					color >>= 1;
+					int d = y * 256 - screenHeight * 128 + lineHeight * 128;
+					int texY = ((d * texHeight) / lineHeight) / 256;
+
+					uint8_t color = texture[texNum][texHeight * texY + texX];
+
+					// make color darker for y-side
+					if (side == 1)
+					{
+						color >>= 1;
+					}
+
+					if (perpWallDist > VIEW_DIST_WALL && gameSettings.renderFog)
+					{
+						color >>= (int)(perpWallDist - VIEW_DIST_WALL);
+					}
+
+					// only draw pixel when color > 0
+					if (color > 0)
+					{
+						ScreenSetPixel(1, x, y + verticalOffset, color);
+					}
+
 				}
 
-				if (perpWallDist > VIEW_DIST_WALL && gameSettings.renderFog)
+				// loop through every vertical stripe of the sprite on screen
+				// alone with vertical scan line
+				if (x >= drawStartX && x < drawEndX)
 				{
-					color >>= (int)(perpWallDist - VIEW_DIST_WALL);
+					if (transformY > 0 && x > 0 && x < screenWidth && transformY < zbuffer[x])
+					{
+						if (y >= drawStartY && y < drawEndY)
+						{
+							int d = (y - vMoveScreen) * 256 - screenHeight * 128 + spriteHeight * 128;
+							int texX = (int)(256 * (x - (-spriteWidth / 2 + spriteScreenX)) * texWidth / spriteWidth) / 256;
+							int texY = ((d * texHeight) / spriteHeight) / 256;
+
+							uint8_t color = texture[sprite.texture][texWidth * texY + texX];
+
+							if (spriteDist > VIEW_DIST_WALL && gameSettings.renderFog)
+							{
+								color >>= (int) (spriteDist - VIEW_DIST_WALL);
+							}
+
+							if (color > 0)
+							{
+								ScreenSetPixel(1, x, y, color);
+							}
+
+
+						}
+					}
 				}
 
-				// set pixel
-				ScreenSetPixel(1, x, y + verticalOffset, color);
+
+				/*
+				// consider at floor and celling
+				else
+				{
+					uint8_t color =  abs(y - screenHeight / 2) * 15 / (screenHeight / 2);
+					ScreenSetPixel(1, x, y + verticalOffset, color);
+				}
+				*/
 			}
 
 			// set the zbuffer for sprite casting
@@ -454,77 +554,6 @@ void RayCaster(void *args)
 				}
 			}
 			 */
-
-
-			// sprite casting
-			// assume there is a sprite at (20,10)
-			Sprite_t sprite = {.x = 20.0f, .y = 10.0f, .texture = 2};
-
-			// take square distance
-			/*
-			float spriteDistance = (
-					(currentPlayer.posX - sprite.x) * (currentPlayer.posX - sprite.x) +
-					(currentPlayer.posY - sprite.y) * (currentPlayer.posY - sprite.y)
-			);
-			*/
-
-			// do the projection and draw item
-			float spriteX = sprite.x - currentPlayer.posX;
-			float spriteY = sprite.y - currentPlayer.posY;
-
-			//transform sprite with the inverse camera matrix
-			  // [ planeX   dirX ] -1                                       [ dirY      -dirX ]
-			  // [               ]       =  1/(planeX*dirY-dirX*planeY) *   [                 ]
-			  // [ planeY   dirY ]                                          [ -planeY  planeX ]
-			float invDet = 1.0f / (currentPlayer.planeX * currentPlayer.dirY - currentPlayer.dirX * currentPlayer.planeY);
-			float transformX = invDet * (currentPlayer.dirY * spriteX - currentPlayer.dirX * spriteY);
-			float transformY = invDet * (-currentPlayer.planeY * spriteX + currentPlayer.planeX * spriteY);
-
-			int spriteScreenX = (int)((screenWidth / 2 * (1 + transformX / transformY)));
-			// scalling and moving the sprite
-#define uDiv 1
-#define vDiv 1
-#define vMove 0.0f
-
-			int vMoveScreen = (int) (vMove / transformY);
-
-			// calculate height of the sprite on screen
-			int spriteHeight = abs((int)(screenHeight / transformY));
-
-			// calculate lowest and highest pixel to fill in current stripe
-			int drawStartY = -spriteHeight / 2 + screenHeight / 2 + vMoveScreen;
-			if (drawStart < 0) drawStartY = 0;
-
-			int drawEndY = spriteHeight / 2 + screenHeight / 2 + vMoveScreen;
-			if (drawEnd >= screenHeight) drawEndY = screenHeight - 1;
-
-			// calculate width of the sprite
-			int spriteWidth = abs((int)(screenHeight / transformY));
-
-			int drawStartX = -spriteWidth / 2 + spriteScreenX;
-			if (drawStartX < 0) drawStartX = 0;
-
-			int drawEndX = spriteWidth / 2 + spriteScreenX;
-			if (drawEndX >= screenWidth) drawEndX = screenWidth - 1;
-
-			// loop through every vertical stripe of the sprite on screen
-			// alone with vertical scan line
-			if (x >= drawStartX && x < drawEndX)
-			{
-				int texX = (int)(256 * (x - (-spriteWidth / 2 + spriteScreenX)) * texWidth / spriteWidth) / 256;
-				if (transformY > 0 && x > 0 && x < screenWidth && transformY < zbuffer[x])
-				{
-					for (y = drawStartY; y < drawEndY; y++)
-					{
-						int d = (y - vMoveScreen) * 256 - screenHeight * 128 + spriteHeight * 128;
-						int texY = ((d * texHeight) / spriteHeight) / 256;
-
-						uint8_t color = texture[sprite.texture][texWidth * texY + texX];
-						ScreenSetPixel(1, x, y, color);
-					}
-				}
-			}
-
 		}
 
 		// timing for input and FPS counter
