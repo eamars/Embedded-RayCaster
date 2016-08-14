@@ -148,7 +148,7 @@ int main( void ){
 	ArgumentHandler mainThreadArgumentHandler = {.arg0 = buttonUpdateEventQueue, .arg1 = screenUpdateEvent};
 	ArgumentHandler buttonThreadArgumentHandler = {.arg0 = buttonUpdateEventQueue, .arg1 = sfxEventQueue};
 
-	xTaskCreate(RayCaster, "RayCaster", 960, (void *) &mainThreadArgumentHandler, 1, NULL);
+	xTaskCreate(RayCaster, "RayCaster", 1024, (void *) &mainThreadArgumentHandler, 1, NULL);
 	xTaskCreate(ScreenUpdateThread, "ScreenUpdateThread", 48, (void *) screenUpdateEvent, 2, NULL);
 	xTaskCreate(SFXPlayerThread, "SFXPlayerThread", 48, (void *) sfxEventQueue, 1, NULL);
 	xTaskCreate(ButtonPoll, "ButtonPoll", 96, (void *) &buttonThreadArgumentHandler, 4, NULL);
@@ -211,6 +211,7 @@ void RayCaster(void *args)
 
 	// iterative variable
 	int x, y;
+	int i;
 
 	// string buffer
 	char textBuffer[32];
@@ -305,7 +306,8 @@ void RayCaster(void *args)
 			}
 
 			// perform DDA
-			while (hit == 0)
+			// since the world map is a squre, the max view distance is
+			for (i = 0; i < adjDist; i++)
 			{
 				// jump to next map square, OR in x-direction, Or in y-direction
 				if (sideDistX < sideDistY)
@@ -322,8 +324,16 @@ void RayCaster(void *args)
 				}
 
 				// check if ray has hit a wall
-				if (worldMap[mapX][mapY] > 0) hit = 1;
+				if (worldMap[mapX][mapY] > 0)
+				{
+					hit = 1;
+					break;
+				}
 			}
+
+			// if ray cannot reach otherside, then quit
+			if (!hit) continue;
+
 
 			// calculate distance projected on camera direction (oblique distance will give fisheye effect!)
 			if (side == 0) perpWallDist = (mapX - rayPosX + (1 - stepX) / 2) / rayDirX;
@@ -378,7 +388,7 @@ void RayCaster(void *args)
 			// set the zbuffer for sprite casting
 			zbuffer[x] = perpWallDist;
 
-
+			/*
 			// floor casting
 			if (gameSettings.renderFloor)
 			{
@@ -443,6 +453,8 @@ void RayCaster(void *args)
 					ScreenSetPixel(1, x, screenHeight - y - 1 + verticalOffset, celing_color);
 				}
 			}
+			 */
+
 
 			// sprite casting
 			// assume there is a sprite at (20,10)
@@ -494,11 +506,11 @@ void RayCaster(void *args)
 			if (drawEndX >= screenWidth) drawEndX = screenWidth - 1;
 
 			// loop through every vertical stripe of the sprite on screen
-			int stripe;
-			for (stripe = drawStartX; stripe < drawEndX; stripe++)
+			// alone with vertical scan line
+			if (x >= drawStartX && x < drawEndX)
 			{
-				int texX = (int)(256 * (stripe - (-spriteWidth / 2 + spriteScreenX)) * texWidth / spriteWidth) / 256;
-				if (transformY > 0 && stripe > 0 && stripe < screenWidth && transformY < zbuffer[stripe])
+				int texX = (int)(256 * (x - (-spriteWidth / 2 + spriteScreenX)) * texWidth / spriteWidth) / 256;
+				if (transformY > 0 && x > 0 && x < screenWidth && transformY < zbuffer[x])
 				{
 					for (y = drawStartY; y < drawEndY; y++)
 					{
@@ -506,10 +518,11 @@ void RayCaster(void *args)
 						int texY = ((d * texHeight) / spriteHeight) / 256;
 
 						uint8_t color = texture[sprite.texture][texWidth * texY + texX];
-						ScreenSetPixel(1, stripe, y, color);
+						ScreenSetPixel(1, x, y, color);
 					}
 				}
 			}
+
 		}
 
 		// timing for input and FPS counter
