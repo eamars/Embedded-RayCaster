@@ -44,6 +44,7 @@ typedef struct
 {
 	float x;
 	float y;
+	uint8_t state;
 	uint8_t texture;
 } Sprite_t;
 
@@ -53,6 +54,14 @@ typedef struct
 	bool renderFloor;
 	bool enableSFX;
 } Settings_t;
+
+typedef enum
+{
+	GAME_WAIT_FOR_OTHER_PLAYER = 0,
+	GAME_FREE_ROAM,
+	GAME_DEFEAT,
+	GAME_VICTORY
+} Game_t;
 
 
 #endif /* MAIN_H_ */

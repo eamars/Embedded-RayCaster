@@ -60,6 +60,9 @@ extern Player_t currentPlayer;
 // game settings
 extern Settings_t gameSettings;
 
+// game state
+extern uint8_t gameState;
+
 void ButtonPollingInit()
 {
 	// initialize ports
@@ -119,6 +122,12 @@ void ButtonPoll( void *args )
 		{
 			case 0x0e:	// up
 			{
+				// at state 0, the player is not allowed to move back and forward
+				if (gameState == GAME_WAIT_FOR_OTHER_PLAYER)
+				{
+					break;
+				}
+
 				button_type = BUTTON_POS_MOVE;
 
 				float moveX = currentPlayer.posX + currentPlayer.dirX * MOVE_SPEED;
@@ -150,6 +159,12 @@ void ButtonPoll( void *args )
 			}
 			case 0x0d: 	// down
 			{
+				// at state 0, the player is not allowed to move back and forward
+				if (gameState == GAME_WAIT_FOR_OTHER_PLAYER)
+				{
+					break;
+				}
+
 				button_type = BUTTON_POS_MOVE;
 
 				float moveX = currentPlayer.posX - currentPlayer.dirX * MOVE_SPEED;
@@ -215,8 +230,12 @@ void ButtonPoll( void *args )
 		{
 			if (gameSettings.enableSFX)
 			{
+				// play sound
 				sfx = SFX_FIRE | SFX_PREEMPT;
 				xQueueSend(sfxEventQueue, &sfx, 0);
+
+				// toggle fire state
+				currentPlayer.state = 0x01;
 			}
 		}
 
@@ -225,7 +244,6 @@ void ButtonPoll( void *args )
 		{
 			xQueueSend(buttonUpdateEventQueue, &button_type, 0);
 		}
-
 
 		vTaskDelayUntil(&xLastWakeTime, (20 / portTICK_RATE_MS));
 	}

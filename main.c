@@ -76,8 +76,9 @@ void ScreenUpdateThread( void *args );
 void CountdownTimerThread(void *args);
 
 Player_t currentPlayer;
+Player_t otherPlayer;
 Settings_t gameSettings;
-Sprite_t sprite = {.x = 20.0f, .y = 10.0f, .texture = TEXTURE_STEVE};
+uint8_t gameState = GAME_WAIT_FOR_OTHER_PLAYER;
 
 
 void PinReset()
@@ -109,10 +110,16 @@ void ConfigInit()
 	currentPlayer.planeX = 0.0f;
 	currentPlayer.planeY = 0.66f;
 
+	otherPlayer.posX = 20.0f;
+	otherPlayer.posY = 10.0f;
+
 	// game settings
 	gameSettings.renderFog = true;
 	gameSettings.renderFloor = false;
 	gameSettings.enableSFX = true;
+
+	// display text at fb2 when waiting for other player
+	ScreenPrintStr(2, "Waiting for players", 24, 10, 44, FONT_6x8, 15);
 }
 
 
@@ -151,7 +158,7 @@ int main( void ){
 	xTaskCreate(ScreenUpdateThread, "ScreenUpdateThread", 48, (void *) screenUpdateEvent, 2, NULL);
 	xTaskCreate(SFXPlayerThread, "SFXPlayerThread", 48, (void *) sfxEventQueue, 1, NULL);
 	xTaskCreate(ButtonPoll, "ButtonPoll", 96, (void *) &buttonThreadArgumentHandler, 4, NULL);
-	xTaskCreate(SerialHandlerThread, "SerialHandlerThread", 48, NULL, 3, NULL);
+	xTaskCreate(SerialHandlerThread, "SerialHandlerThread", 256, &buttonThreadArgumentHandler, 3, NULL);
 
 	// initialize game settings
 	ConfigInit();
@@ -382,8 +389,8 @@ void RayCaster(void *args)
 			int drawStartX, drawEndX;
 
 			// do the projection and draw item
-			float spriteX = sprite.x - currentPlayer.posX;
-			float spriteY = sprite.y - currentPlayer.posY;
+			float spriteX = otherPlayer.posX - currentPlayer.posX;
+			float spriteY = otherPlayer.posY - currentPlayer.posY;
 
 			float spriteDist = sqrt(spriteX * spriteX + spriteY * spriteY);
 
@@ -479,7 +486,7 @@ void RayCaster(void *args)
 								int texX = (int)(256 * (x - (-spriteWidth / 2 + spriteScreenX)) * texWidth / spriteWidth) / 256;
 								int texY = ((d * texHeight) / spriteHeight) / 256;
 
-								uint8_t color = texture[sprite.texture][texWidth * texY + texX];
+								uint8_t color = texture[TEXTURE_STEVE][texWidth * texY + texX];
 
 								if (spriteDist > VIEW_DIST_WALL && gameSettings.renderFog)
 								{
@@ -490,8 +497,6 @@ void RayCaster(void *args)
 								{
 									ScreenSetPixel(1, x, y, color);
 								}
-
-
 							}
 						}
 					}
@@ -576,6 +581,9 @@ void RayCaster(void *args)
 		// position
 		sprintf(textBuffer, "X:%d Y:%d DI:(%d,%d)", (int)currentPlayer.posX, (int)currentPlayer.posY, (int)(currentPlayer.dirX * 57.296f),  (int)(currentPlayer.dirY * 57.296f));
 		ScreenPrintStr(1, textBuffer, strlen(textBuffer), 0, 88, FONT_6x8, 15);
+
+		sprintf(textBuffer, "X:%d Y:%d DI:(%d,%d)", (int)otherPlayer.posX, (int)otherPlayer.posY, (int)(otherPlayer.dirX * 57.296f),  (int)(otherPlayer.dirY * 57.296f));
+		ScreenPrintStr(1, textBuffer, strlen(textBuffer), 0, 80, FONT_6x8, 15);
 
 		// we don't care if we successfully give the semaphore or not since we only need to
 		// update the screen once no matter how many write operations applied to the screen
