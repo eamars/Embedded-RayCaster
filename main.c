@@ -54,13 +54,13 @@
 /* Demo includes. */
 #include "demo_code/basic_io.h"
 
-// include OLED driver
-#include "drivers/rit128x96x4.h"
+// modules
 #include "screen.h"
 #include "button.h"
 #include "raycaster.h"
 #include "main.h"
 #include "sfx.h"
+#include "serial.h"
 
 #include "raycaster.h"
 #include "texture.h"
@@ -86,6 +86,7 @@ void PinReset()
 	SysCtlPeripheralReset (SYSCTL_PERIPH_GPIOA);
 	SysCtlPeripheralReset (SYSCTL_PERIPH_GPIOB);
 	SysCtlPeripheralReset (SYSCTL_PERIPH_GPIOG);
+	SysCtlPeripheralReset (SYSCTL_PERIPH_UART0);
 }
 
 void PinInit()
@@ -95,6 +96,7 @@ void PinInit()
 	SysCtlPeripheralEnable (SYSCTL_PERIPH_GPIOA);
 	SysCtlPeripheralEnable (SYSCTL_PERIPH_GPIOB);
 	SysCtlPeripheralEnable (SYSCTL_PERIPH_GPIOG);
+	SysCtlPeripheralEnable (SYSCTL_PERIPH_UART0);
 }
 
 void ConfigInit()
@@ -125,6 +127,7 @@ int main( void ){
 
 	ScreenInit();
 	ButtonPollingInit();
+	SerialInit();
 
 	SFXInit(SysCtlClockGet());
 
@@ -133,8 +136,10 @@ int main( void ){
 
 	// create semaphore for screen update event
 	xSemaphoreHandle screenUpdateEvent;
+	xSemaphoreHandle serialUpdateEvent;
 	xQueueHandle buttonUpdateEventQueue;
 
+	vSemaphoreCreateBinary(serialUpdateEvent);
 	vSemaphoreCreateBinary(screenUpdateEvent);
 	buttonUpdateEventQueue = xQueueCreate(2, sizeof(uint8_t));
 
@@ -146,6 +151,7 @@ int main( void ){
 	xTaskCreate(ScreenUpdateThread, "ScreenUpdateThread", 48, (void *) screenUpdateEvent, 2, NULL);
 	xTaskCreate(SFXPlayerThread, "SFXPlayerThread", 48, (void *) sfxEventQueue, 1, NULL);
 	xTaskCreate(ButtonPoll, "ButtonPoll", 96, (void *) &buttonThreadArgumentHandler, 4, NULL);
+	xTaskCreate(SerialHandlerThread, "SerialHandlerThread", 48, NULL, 3, NULL);
 
 	// initialize game settings
 	ConfigInit();
@@ -367,47 +373,61 @@ void RayCaster(void *args)
 			/*
 			 * Sprite Casting Start
 			 */
+			float invDet;
+			float transformX, transformY;
+			int spriteScreenX;
+			int vMoveScreen;
+			int spriteHeight, spriteWidth;
+			int drawStartY, drawEndY;
+			int drawStartX, drawEndX;
+
 			// do the projection and draw item
 			float spriteX = sprite.x - currentPlayer.posX;
 			float spriteY = sprite.y - currentPlayer.posY;
 
-			//transform sprite with the inverse camera matrix
-			  // [ planeX   dirX ] -1                                       [ dirY      -dirX ]
-			  // [               ]       =  1/(planeX*dirY-dirX*planeY) *   [                 ]
-			  // [ planeY   dirY ]                                          [ -planeY  planeX ]
-			float invDet = 1.0f / (currentPlayer.planeX * currentPlayer.dirY - currentPlayer.dirX * currentPlayer.planeY);
-			float transformX = invDet * (currentPlayer.dirY * spriteX - currentPlayer.dirX * spriteY);
-			float transformY = invDet * (-currentPlayer.planeY * spriteX + currentPlayer.planeX * spriteY);
-
-			int spriteScreenX = (int)((screenWidth / 2 * (1 + transformX / transformY)));
-
-			// scalling and moving the sprite
-			#define uDiv 1
-			#define vDiv 1
-			#define vMove 0.0f
-
-			int vMoveScreen = (int) (vMove / transformY);
-
-			// calculate height of the sprite on screen
-			int spriteHeight = abs((int)(screenHeight / transformY));
-
-			// calculate lowest and highest pixel to fill in current stripe
-			int drawStartY = -spriteHeight / 2 + screenHeight / 2 + vMoveScreen;
-			if (drawStart < 0) drawStartY = 0;
-
-			int drawEndY = spriteHeight / 2 + screenHeight / 2 + vMoveScreen;
-			if (drawEnd >= screenHeight) drawEndY = screenHeight - 1;
-
-			// calculate width of the sprite
-			int spriteWidth = abs((int)(screenHeight / transformY));
-
-			int drawStartX = -spriteWidth / 2 + spriteScreenX;
-			if (drawStartX < 0) drawStartX = 0;
-
-			int drawEndX = spriteWidth / 2 + spriteScreenX;
-			if (drawEndX >= screenWidth) drawEndX = screenWidth - 1;
-
 			float spriteDist = sqrt(spriteX * spriteX + spriteY * spriteY);
+
+			// only cast sprite in short distance
+			if (spriteDist < VIEW_DIST_SPRITE)
+			{
+				zbuffer[x] = perpWallDist;
+				//transform sprite with the inverse camera matrix
+				  // [ planeX   dirX ] -1                                       [ dirY      -dirX ]
+				  // [               ]       =  1/(planeX*dirY-dirX*planeY) *   [                 ]
+				  // [ planeY   dirY ]                                          [ -planeY  planeX ]
+				invDet = 1.0f / (currentPlayer.planeX * currentPlayer.dirY - currentPlayer.dirX * currentPlayer.planeY);
+				transformX = invDet * (currentPlayer.dirY * spriteX - currentPlayer.dirX * spriteY);
+				transformY = invDet * (-currentPlayer.planeY * spriteX + currentPlayer.planeX * spriteY);
+
+				spriteScreenX = (int)((screenWidth / 2 * (1 + transformX / transformY)));
+
+				// scalling and moving the sprite
+				#define uDiv 1
+				#define vDiv 1
+				#define vMove 0.0f
+
+				vMoveScreen = (int) (vMove / transformY);
+
+				// calculate height of the sprite on screen
+				spriteHeight = abs((int)(screenHeight / transformY));
+
+				// calculate lowest and highest pixel to fill in current stripe
+				drawStartY = -spriteHeight / 2 + screenHeight / 2 + vMoveScreen;
+				if (drawStart < 0) drawStartY = 0;
+
+				drawEndY = spriteHeight / 2 + screenHeight / 2 + vMoveScreen;
+				if (drawEnd >= screenHeight) drawEndY = screenHeight - 1;
+
+				// calculate width of the sprite
+				spriteWidth = abs((int)(screenHeight / transformY));
+
+				drawStartX = -spriteWidth / 2 + spriteScreenX;
+				if (drawStartX < 0) drawStartX = 0;
+
+				drawEndX = spriteWidth / 2 + spriteScreenX;
+				if (drawEndX >= screenWidth) drawEndX = screenWidth - 1;
+			}
+
 			/*
 			 * Sprite Casting End
 			 */
@@ -447,46 +467,36 @@ void RayCaster(void *args)
 
 				// loop through every vertical stripe of the sprite on screen
 				// alone with vertical scan line
-				if (x >= drawStartX && x < drawEndX)
+				if (spriteDist < VIEW_DIST_SPRITE)
 				{
-					if (transformY > 0 && x > 0 && x < screenWidth && transformY < zbuffer[x])
+					if (x >= drawStartX && x < drawEndX)
 					{
-						if (y >= drawStartY && y < drawEndY)
+						if (transformY > 0 && x > 0 && x < screenWidth && transformY < zbuffer[x])
 						{
-							int d = (y - vMoveScreen) * 256 - screenHeight * 128 + spriteHeight * 128;
-							int texX = (int)(256 * (x - (-spriteWidth / 2 + spriteScreenX)) * texWidth / spriteWidth) / 256;
-							int texY = ((d * texHeight) / spriteHeight) / 256;
-
-							uint8_t color = texture[sprite.texture][texWidth * texY + texX];
-
-							if (spriteDist > VIEW_DIST_WALL && gameSettings.renderFog)
+							if (y >= drawStartY && y < drawEndY)
 							{
-								color >>= (int) (spriteDist - VIEW_DIST_WALL);
+								int d = (y - vMoveScreen) * 256 - screenHeight * 128 + spriteHeight * 128;
+								int texX = (int)(256 * (x - (-spriteWidth / 2 + spriteScreenX)) * texWidth / spriteWidth) / 256;
+								int texY = ((d * texHeight) / spriteHeight) / 256;
+
+								uint8_t color = texture[sprite.texture][texWidth * texY + texX];
+
+								if (spriteDist > VIEW_DIST_WALL && gameSettings.renderFog)
+								{
+									color >>= (int) (spriteDist - VIEW_DIST_WALL);
+								}
+
+								if (color > 0)
+								{
+									ScreenSetPixel(1, x, y, color);
+								}
+
+
 							}
-
-							if (color > 0)
-							{
-								ScreenSetPixel(1, x, y, color);
-							}
-
-
 						}
 					}
 				}
-
-
-				/*
-				// consider at floor and celling
-				else
-				{
-					uint8_t color =  abs(y - screenHeight / 2) * 15 / (screenHeight / 2);
-					ScreenSetPixel(1, x, y + verticalOffset, color);
-				}
-				*/
 			}
-
-			// set the zbuffer for sprite casting
-			zbuffer[x] = perpWallDist;
 
 			/*
 			// floor casting

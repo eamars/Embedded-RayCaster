@@ -12,6 +12,7 @@
 
 #define VIEW_DIST_WALL 3.0f
 #define VIEW_DIST_FLOOR 4.0f
+#define VIEW_DIST_SPRITE 5.0f
 
 float currentDistTable[screenHeight / 2];
 

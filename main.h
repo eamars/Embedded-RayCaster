@@ -9,6 +9,7 @@
 #define MAIN_H_
 
 #include <stdbool.h>
+#include <stdint.h>
 
 #define screenWidth 128
 #define screenHeight 96
@@ -36,7 +37,7 @@ typedef struct
 	float posX, posY;			// current player location
 	float dirX, dirY;			// current player viewing direction
 	float planeX, planeY;		// player field of view
-	uint8_t state;				// state of player (dead or alive)
+	uint8_t state;				// state of player (shoot or not)
 } Player_t;
 
 typedef struct
