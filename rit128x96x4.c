@@ -98,7 +98,6 @@ static unsigned char g_pucBuffer[8];
 //*****************************************************************************
 #define RIT_INIT_REMAP      0x52 // app note says 0x51
 #define RIT_INIT_OFFSET     0x00
-static const unsigned char g_pucRIT128x96x4VerticalInc[]   = { 0xA0, 0x56 };
 static const unsigned char g_pucRIT128x96x4HorizontalInc[] = { 0xA0, 0x52 };
 
 //*****************************************************************************
