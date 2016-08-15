@@ -220,6 +220,9 @@ void RayCaster(void *args)
 	int x, y;
 	int i;
 
+	// fire animation
+	bool drawFire = false;
+
 	// string buffer
 	char textBuffer[32];
 
@@ -493,10 +496,7 @@ void RayCaster(void *args)
 									color >>= (int) (spriteDist - VIEW_DIST_WALL);
 								}
 
-								if (color > 0)
-								{
-									ScreenSetPixel(1, x, y, color);
-								}
+								ScreenSetPixel(1, x, y, color);
 							}
 						}
 					}
@@ -571,6 +571,12 @@ void RayCaster(void *args)
 			 */
 		}
 
+		// draw crosshair
+		if (gameState == GAME_FREE_ROAM)
+		{
+			ScreenDrawCircle(1, 64, 48, 5, 10);
+		}
+
 		// timing for input and FPS counter
 		oldTime = time;
 		time = xTaskGetTickCount();
@@ -585,6 +591,27 @@ void RayCaster(void *args)
 		sprintf(textBuffer, "X:%d Y:%d DI:(%d,%d)", (int)otherPlayer.posX, (int)otherPlayer.posY, (int)(otherPlayer.dirX * 57.296f),  (int)(otherPlayer.dirY * 57.296f));
 		ScreenPrintStr(1, textBuffer, strlen(textBuffer), 0, 80, FONT_6x8, 15);
 
+		if (drawFire)
+		{
+			sprintf(textBuffer, "F");
+			ScreenPrintStr(1, textBuffer, 1, 0, 72, FONT_6x8, 15);
+			drawFire = false;
+		}
+		else{
+			sprintf(textBuffer, "H");
+			ScreenPrintStr(1, textBuffer, 1, 0, 72, FONT_6x8, 15);
+		}
+
+		if (otherPlayer.state == 0x01)
+		{
+			sprintf(textBuffer, "F");
+			ScreenPrintStr(1, textBuffer, 1, 6, 72, FONT_6x8, 15);
+		}
+		else{
+			sprintf(textBuffer, "H");
+			ScreenPrintStr(1, textBuffer, 1, 6, 72, FONT_6x8, 15);
+		}
+
 		// we don't care if we successfully give the semaphore or not since we only need to
 		// update the screen once no matter how many write operations applied to the screen
 		// buffer
@@ -593,6 +620,12 @@ void RayCaster(void *args)
 		// wait for user input
 		uint8_t button_type;
 		xQueueReceive(buttonUpdateEventQueue, &button_type, portMAX_DELAY);
+
+		// if the user press the fire button, then register a fire animation
+		if (button_type == BUTTON_SELECT)
+		{
+			drawFire = true;
+		}
 
 		// run this task at precisely at 100Hz
 		vTaskDelayUntil(&xLastWakeTime, (50 / portTICK_RATE_MS));

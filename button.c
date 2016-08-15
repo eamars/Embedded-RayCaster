@@ -237,6 +237,8 @@ void ButtonPoll( void *args )
 				// toggle fire state
 				currentPlayer.state = 0x01;
 			}
+
+			button_type = BUTTON_SELECT;
 		}
 
 		// pass update event to main thread

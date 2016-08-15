@@ -83,9 +83,6 @@ void SerialHandlerThread(void *args)
 
 	while (1)
 	{
-		// toggle fire state
-		currentPlayer.state = 0x00;
-
 		// copy state (can be used as a sync flag)
 		buffer[0] = 0xfe | currentPlayer.state;
 
@@ -109,6 +106,9 @@ void SerialHandlerThread(void *args)
 		{
 			UARTCharPut(UART0_BASE, buffer[i]);
 		}
+
+		// toggle fire state
+		currentPlayer.state = 0x00;
 
 		// read from serial
 		while(UARTCharsAvail(UART0_BASE))
