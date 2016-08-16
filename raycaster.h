@@ -14,6 +14,8 @@
 #define VIEW_DIST_FLOOR 4.0f
 #define VIEW_DIST_SPRITE 5.0f
 
+#define RAD_TO_DEG_RATIO 	57.2957795131f
+
 float currentDistTable[screenHeight / 2];
 
 
