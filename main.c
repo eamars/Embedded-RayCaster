@@ -441,6 +441,16 @@ void RayCaster(void *args)
 				if (drawEndX >= screenWidth) drawEndX = screenWidth - 1;
 			}
 
+			// the player can only shot the sprite on the screen!
+			if (drawFire == true)
+			{
+				if (transformY > 0 && transformY < zbuffer[x] && drawStartX < 64 && 64 < drawEndX)
+				{
+					gameState = GAME_VICTORY;
+				}
+
+			}
+
 			/*
 			 * Sprite Casting End
 			 */
@@ -484,7 +494,7 @@ void RayCaster(void *args)
 				{
 					if (x >= drawStartX && x < drawEndX)
 					{
-						if (transformY > 0 && x > 0 && x < screenWidth && transformY < zbuffer[x])
+						if (transformY > 0 && transformY < zbuffer[x])
 						{
 							if (y >= drawStartY && y < drawEndY)
 							{
@@ -504,6 +514,7 @@ void RayCaster(void *args)
 						}
 					}
 				}
+
 			}
 
 			/*
@@ -584,7 +595,7 @@ void RayCaster(void *args)
 		oldTime = time;
 		time = xTaskGetTickCount();
 		portTickType frameTime = (time - oldTime) * portTICK_RATE_MS;
-		sprintf(textBuffer, "FPS:%d PL:(%d,%d)", 1000 / frameTime, (int)(currentPlayer.planeX * RAD_TO_DEG_RATIO), (int)(currentPlayer.planeY * RAD_TO_DEG_RATIO));
+		sprintf(textBuffer, "FPS:%d", 1000 / frameTime);
 		ScreenPrintStr(1, textBuffer, strlen(textBuffer), 0, 0, FONT_6x8, 15);
 
 		// position
