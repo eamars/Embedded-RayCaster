@@ -128,7 +128,7 @@ void ButtonPoll( void *args )
 					break;
 				}
 
-				button_type = BUTTON_POS_MOVE;
+				button_type = BUTTON_UP;
 
 				float moveX = currentPlayer.posX + currentPlayer.dirX * MOVE_SPEED;
 				float moveY = currentPlayer.posY + currentPlayer.dirY * MOVE_SPEED;
@@ -165,7 +165,7 @@ void ButtonPoll( void *args )
 					break;
 				}
 
-				button_type = BUTTON_POS_MOVE;
+				button_type = BUTTON_DOWN;
 
 				float moveX = currentPlayer.posX - currentPlayer.dirX * MOVE_SPEED;
 				float moveY = currentPlayer.posY - currentPlayer.dirY * MOVE_SPEED;
@@ -196,7 +196,7 @@ void ButtonPoll( void *args )
 			}
 			case 0x0b: 	// left
 			{
-				button_type = BUTTON_DIR_MOVE;
+				button_type = BUTTON_LEFT;
 
 				float oldDirX = currentPlayer.dirX;
 				currentPlayer.dirX = currentPlayer.dirX * COS_ROT_SPEED - currentPlayer.dirY * SIN_ROT_SPEED;
@@ -209,7 +209,7 @@ void ButtonPoll( void *args )
 			}
 			case 0x07: 	// right
 			{
-				button_type = BUTTON_DIR_MOVE;
+				button_type = BUTTON_RIGHT;
 
 				float oldDirX = currentPlayer.dirX;
 				currentPlayer.dirX = currentPlayer.dirX * COS_ROT_SPEED_N - currentPlayer.dirY * SIN_ROT_SPEED_N;

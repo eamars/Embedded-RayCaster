@@ -15,10 +15,12 @@
 #include "include/queue.h"
 
 enum button_type {
-	BUTTON_POS_MOVE = 0,
-	BUTTON_DIR_MOVE,
-	BUTTON_IDLE,
-	BUTTON_SELECT
+	BUTTON_UP = 0,
+	BUTTON_DOWN,
+	BUTTON_LEFT,
+	BUTTON_RIGHT,
+	BUTTON_SELECT,
+	BUTTON_IDLE
 };
 
 extern uint8_t BUTTON_EVENT;
