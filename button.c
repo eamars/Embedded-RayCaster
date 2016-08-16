@@ -28,6 +28,7 @@
 #include "button.h"
 #include "world_map.h"
 #include "sfx.h"
+#include "screen.h"
 
 
 //*****************************************************************************
@@ -233,11 +234,12 @@ void ButtonPoll( void *args )
 				// play sound
 				sfx = SFX_FIRE | SFX_PREEMPT;
 				xQueueSend(sfxEventQueue, &sfx, 0);
-
-				// toggle fire state
-				currentPlayer.state = 0x01;
 			}
 
+			// toggle fire state
+			currentPlayer.state = 0x01;
+
+			// register button event
 			button_type = BUTTON_SELECT;
 		}
 
