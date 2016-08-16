@@ -57,6 +57,9 @@
 								<option id="com.ti.ccstudio.buildDefinitions.TMS470_16.6.compilerID.DISPLAY_ERROR_NUMBER.508212444" name="Emit diagnostic identifier numbers (--display_error_number, -pden)" superClass="com.ti.ccstudio.buildDefinitions.TMS470_16.6.compilerID.DISPLAY_ERROR_NUMBER" value="true" valueType="boolean"/>
 								<option id="com.ti.ccstudio.buildDefinitions.TMS470_16.6.compilerID.C_DIALECT.1145810922" name="C Dialect" superClass="com.ti.ccstudio.buildDefinitions.TMS470_16.6.compilerID.C_DIALECT" value="com.ti.ccstudio.buildDefinitions.TMS470_16.6.compilerID.C_DIALECT.C99" valueType="enumerated"/>
 								<option id="com.ti.ccstudio.buildDefinitions.TMS470_16.6.compilerID.C___DIALECT.1051706949" name="C++ Dialect" superClass="com.ti.ccstudio.buildDefinitions.TMS470_16.6.compilerID.C___DIALECT" value="com.ti.ccstudio.buildDefinitions.TMS470_16.6.compilerID.C___DIALECT.CPLUSPLUS03" valueType="enumerated"/>
+								<option id="com.ti.ccstudio.buildDefinitions.TMS470_16.6.compilerID.OTHER_FLAGS.1550597302" name="Other flags" superClass="com.ti.ccstudio.buildDefinitions.TMS470_16.6.compilerID.OTHER_FLAGS" valueType="stringList">
+									<listOptionValue builtIn="false" value=""/>
+								</option>
 								<inputType id="com.ti.ccstudio.buildDefinitions.TMS470_16.6.compiler.inputType__C_SRCS.1862455563" name="C Sources" superClass="com.ti.ccstudio.buildDefinitions.TMS470_16.6.compiler.inputType__C_SRCS"/>
 								<inputType id="com.ti.ccstudio.buildDefinitions.TMS470_16.6.compiler.inputType__CPP_SRCS.1542838786" name="C++ Sources" superClass="com.ti.ccstudio.buildDefinitions.TMS470_16.6.compiler.inputType__CPP_SRCS"/>
 								<inputType id="com.ti.ccstudio.buildDefinitions.TMS470_16.6.compiler.inputType__ASM_SRCS.890849173" name="Assembly Sources" superClass="com.ti.ccstudio.buildDefinitions.TMS470_16.6.compiler.inputType__ASM_SRCS"/>
