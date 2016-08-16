@@ -158,7 +158,7 @@ int main( void ){
 	xTaskCreate(ScreenUpdateThread, "ScreenUpdateThread", 48, (void *) screenUpdateEvent, 2, NULL);
 	xTaskCreate(SFXPlayerThread, "SFXPlayerThread", 48, (void *) sfxEventQueue, 1, NULL);
 	xTaskCreate(ButtonPoll, "ButtonPoll", 96, (void *) &buttonThreadArgumentHandler, 4, NULL);
-	xTaskCreate(SerialHandlerThread, "SerialHandlerThread", 256, &buttonThreadArgumentHandler, 3, NULL);
+	xTaskCreate(SerialHandlerThread, "SerialHandlerThread", 128, (void *) buttonUpdateEventQueue, 3, NULL);
 
 	// initialize game settings
 	ConfigInit();
@@ -581,14 +581,14 @@ void RayCaster(void *args)
 		oldTime = time;
 		time = xTaskGetTickCount();
 		portTickType frameTime = (time - oldTime) * portTICK_RATE_MS;
-		sprintf(textBuffer, "FPS:%d PL:(%d,%d)", 1000 / frameTime, (int)(currentPlayer.planeX * 57.296f), (int)(currentPlayer.planeY * 57.296f));
+		sprintf(textBuffer, "FPS:%d PL:(%d,%d)", 1000 / frameTime, (int)(currentPlayer.planeX * RAD_TO_DEG_RATIO), (int)(currentPlayer.planeY * RAD_TO_DEG_RATIO));
 		ScreenPrintStr(1, textBuffer, strlen(textBuffer), 0, 0, FONT_6x8, 15);
 
 		// position
-		sprintf(textBuffer, "X:%d Y:%d DI:(%d,%d)", (int)currentPlayer.posX, (int)currentPlayer.posY, (int)(currentPlayer.dirX * 57.296f),  (int)(currentPlayer.dirY * 57.296f));
+		sprintf(textBuffer, "X:%d Y:%d DI:(%d,%d)", (int)currentPlayer.posX, (int)currentPlayer.posY, (int)(currentPlayer.dirX * RAD_TO_DEG_RATIO),  (int)(currentPlayer.dirY * RAD_TO_DEG_RATIO));
 		ScreenPrintStr(1, textBuffer, strlen(textBuffer), 0, 88, FONT_6x8, 15);
 
-		sprintf(textBuffer, "X:%d Y:%d DI:(%d,%d)", (int)otherPlayer.posX, (int)otherPlayer.posY, (int)(otherPlayer.dirX * 57.296f),  (int)(otherPlayer.dirY * 57.296f));
+		sprintf(textBuffer, "X:%d Y:%d DI:(%d,%d)", (int)otherPlayer.posX, (int)otherPlayer.posY, (int)(otherPlayer.dirX * RAD_TO_DEG_RATIO),  (int)(otherPlayer.dirY * RAD_TO_DEG_RATIO));
 		ScreenPrintStr(1, textBuffer, strlen(textBuffer), 0, 80, FONT_6x8, 15);
 
 		if (drawFire)
