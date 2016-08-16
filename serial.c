@@ -36,7 +36,7 @@
 #define GPIO_PA0_U0RX	0x00000001
 #define GPIO_PA1_U0TX	0x00000401
 
-#define BUFFER_SZ 12
+#define BUFFER_SZ 13
 
 // player
 extern Player_t currentPlayer;
@@ -120,6 +120,9 @@ void SerialHandlerThread(void *args)
 		// copy dirY
 		txbuffer[10] = (int8_t) roundf(RAD_TO_DEG_RATIO * currentPlayer.dirY);
 
+		// copy game state
+		txbuffer[11] = gameState;
+
 		for (uint8_t i = 0; i < BUFFER_SZ; i++)
 		{
 			UARTCharPut(UART0_BASE, txbuffer[i]);
@@ -182,6 +185,17 @@ void SerialHandlerThread(void *args)
 
 						// get dirY
 						otherPlayer.dirY = ((int8_t) rxbuffer[10]) / RAD_TO_DEG_RATIO;
+
+						// get gameState
+						uint8_t state = rxbuffer[11];
+						if (state == GAME_VICTORY) // other player wins the game
+						{
+							gameState = GAME_DEFEAT;
+							ScreenPrintStr(2, "You Lose!", 9, 27, 44, FONT_6x8, 15);
+
+							// TODO: Find a better way
+							ScreenUpdate();
+						}
 
 						// pass a BUTTON_IDLE to update the screen
 						uint8_t button_type = BUTTON_IDLE;

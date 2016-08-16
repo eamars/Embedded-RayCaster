@@ -447,6 +447,10 @@ void RayCaster(void *args)
 				if (transformY > 0 && transformY < zbuffer[x] && drawStartX < 64 && 64 < drawEndX)
 				{
 					gameState = GAME_VICTORY;
+					ScreenPrintStr(2, "You Win!", 8, 30, 44, FONT_6x8, 15);
+
+					// TODO: Find a better way
+					xSemaphoreGive(screenUpdateEvent);
 				}
 
 			}
