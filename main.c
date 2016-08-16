@@ -109,14 +109,17 @@ void ConfigInit()
 	currentPlayer.dirY = 0.0f;
 	currentPlayer.planeX = 0.0f;
 	currentPlayer.planeY = 0.66f;
+	currentPlayer.state = 0x00;
 
-	otherPlayer.posX = 20.0f;
-	otherPlayer.posY = 10.0f;
+	otherPlayer.posX = 0.0f;
+	otherPlayer.posY = 0.0f;
+	otherPlayer.dirX = 0.0f;
+	otherPlayer.dirY = 0.0f;
+	otherPlayer.state = 0x00;
 
 	// game settings
 	gameSettings.renderFog = true;
-	gameSettings.renderFloor = false;
-	gameSettings.enableSFX = true;
+	gameSettings.enableSFX = false;
 
 	// display text at fb2 when waiting for other player
 	ScreenPrintStr(2, "Waiting for players", 24, 10, 44, FONT_6x8, 15);
@@ -261,7 +264,7 @@ void RayCaster(void *args)
 
 	while (1)
 	{
-		ScreenClearFrameBuffer(1);
+		ScreenPaintWithBackground(1, 0x43, 0x01);
 
 		for (x = 0; x < screenWidth; x++)
 		{
@@ -591,6 +594,7 @@ void RayCaster(void *args)
 		sprintf(textBuffer, "X:%d Y:%d DI:(%d,%d)", (int)otherPlayer.posX, (int)otherPlayer.posY, (int)(otherPlayer.dirX * RAD_TO_DEG_RATIO),  (int)(otherPlayer.dirY * RAD_TO_DEG_RATIO));
 		ScreenPrintStr(1, textBuffer, strlen(textBuffer), 0, 80, FONT_6x8, 15);
 
+		// user pressed fire button
 		if (drawFire)
 		{
 			sprintf(textBuffer, "F");
@@ -602,6 +606,7 @@ void RayCaster(void *args)
 			ScreenPrintStr(1, textBuffer, 1, 0, 72, FONT_6x8, 15);
 		}
 
+		// other player pressed fire button
 		if (otherPlayer.state == 0x01)
 		{
 			sprintf(textBuffer, "F");
