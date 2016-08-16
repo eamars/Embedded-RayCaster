@@ -33,8 +33,8 @@
 #include "button.h"
 #include "raycaster.h"
 
-#define GPIO_PA0_U0RX 			0x00000001
-#define GPIO_PA1_U0TX           0x00000401
+#define GPIO_PA0_U0RX	0x00000001
+#define GPIO_PA1_U0TX	0x00000401
 
 #define BUFFER_SZ 12
 
