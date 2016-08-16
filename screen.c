@@ -11,6 +11,7 @@
 #include "drivers/rit128x96x4.h"
 
 #include <string.h>
+#include <stdint.h>
 
 #define sign(x) ((x>0)?1:((x<0)?-1:0))
 
@@ -18,7 +19,14 @@ static uint8_t framebuffer[3][6144];
 
 void ScreenClearFrameBuffer(uint8_t fb_idx)
 {
-	memset(framebuffer[fb_idx], 0x0, sizeof(framebuffer[fb_idx]));
+	memset(framebuffer[fb_idx], 0x00, sizeof(framebuffer[fb_idx]));
+}
+
+void ScreenPaintWithBackground(uint8_t fb_idx, uint8_t color1, uint8_t color2)
+{
+	memset(framebuffer[fb_idx], color1, sizeof(framebuffer[fb_idx]) / 2);
+	memset(framebuffer[fb_idx] + sizeof(framebuffer[fb_idx]) / 2, color2, sizeof(framebuffer[fb_idx]) / 2);
+
 }
 
 bool ScreenSetPixel(uint8_t fb_idx, uint8_t cx, uint8_t cy, uint8_t level)

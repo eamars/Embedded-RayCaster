@@ -28,6 +28,9 @@ void ScreenInit();
 // erase given framebuffer
 void ScreenClearFrameBuffer(uint8_t fb_idx);
 
+// print half of screen
+void ScreenPaintWithBackground(uint8_t fb_idx, uint8_t color1, uint8_t color2);
+
 // draw a dot on screen
 // for frequent used function, it is suggested to use no more than 4 arguments
 // ref: http://stackoverflow.com/questions/26515261/why-does-arm-documentation-recommend-having-only-4-function-arguments-is-there
