@@ -8,6 +8,7 @@
 
 #include "screen.h"
 #include "font_6x8.h"
+#include "font_8x16.h"
 #include "drivers/rit128x96x4.h"
 
 #include <string.h>
@@ -243,6 +244,47 @@ void ScreenPrintChar6x8(uint8_t fb_idx, uint8_t ch, uint8_t cx, uint8_t cy, uint
 	}
 }
 
+void ScreenPrintChar8x16(uint8_t fb_idx, uint8_t ch, uint8_t cx, uint8_t cy, uint8_t level)
+{
+	unsigned cheight   = font8x16.cheight;
+	unsigned cwidth    = font8x16.cwidth;
+	unsigned offset    = ch * cheight;
+
+	unsigned i, j;
+
+	unsigned mask = 1 << (cwidth - 1);
+
+	for (i = 0; i < cheight; i++)
+	{
+		// iterate through all 8 bit pattern
+		for (j = 0; j < cwidth; j++)
+		{
+			// filter the bit pattern, move 1 from MSB to LSB
+			//
+			// if line is 0b01100010, mask = 0b10000000
+			//      0th bit, j = 0, mask >> 0 = 0b10000000
+			//          0b01100010
+			//      &   0b10000000
+			//      --------------
+			//          0b00000000
+			//      bit pattern at 0th bit is 0, displays ' '
+			//
+			//
+			//      1st bit, j = 1, 0x80 >> 1 = 0b01000000
+			//          0b01100010
+			//      &   0b01000000
+			//      --------------
+			//          0b01000000
+			//      bit pattern at 1st bit is 64, which is not zero, displays '*'
+			if (font8x16.rundata[i + offset] & (mask >> j))
+			{
+				ScreenSetPixel(fb_idx, cx + j, cy + i, level);
+			}
+		}
+	}
+}
+
+
 void ScreenPrintStr(uint8_t fb_idx, char *str, uint8_t len, uint8_t cx, uint8_t cy, Font_t font, uint8_t level)
 {
 	uint8_t offset;
@@ -258,6 +300,12 @@ void ScreenPrintStr(uint8_t fb_idx, char *str, uint8_t len, uint8_t cx, uint8_t 
 			{
 				ScreenPrintChar6x8(fb_idx, str[i], offset + cx, cy, level);
 				offset += 6;
+				break;
+			}
+			case FONT_8x16:
+			{
+				ScreenPrintChar8x16(fb_idx, str[i], offset + cx, cy, level);
+				offset += 8;
 				break;
 			}
 			default:

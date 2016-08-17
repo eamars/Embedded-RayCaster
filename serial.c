@@ -191,7 +191,7 @@ void SerialHandlerThread(void *args)
 						if (state == GAME_VICTORY) // other player wins the game
 						{
 							gameState = GAME_DEFEAT;
-							ScreenPrintStr(2, "You Lose!", 9, 27, 44, FONT_6x8, 15);
+							ScreenPrintStr(2, "You Lose!", 9, 27, 44, FONT_8x16, 15);
 						}
 
 						// pass a BUTTON_IDLE to update the screen
