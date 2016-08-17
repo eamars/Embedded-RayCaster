@@ -22,6 +22,9 @@ typedef struct
 	uint8_t x, y;
 } Point_t;
 
+// update screen on request
+void ScreenUpdateThread( void *args );
+
 // initialize the screen driver
 void ScreenInit();
 

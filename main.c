@@ -71,10 +71,6 @@
 #define mainDELAY_LOOP_COUNT		( 0xfffff )
 
 
-/* The task function. */
-void ScreenUpdateThread( void *args );
-void CountdownTimerThread(void *args);
-
 Player_t currentPlayer;
 Player_t otherPlayer;
 Settings_t gameSettings;
@@ -648,24 +644,6 @@ void RayCaster(void *args)
 
 		// run this task at precisely at 100Hz
 		vTaskDelayUntil(&xLastWakeTime, (50 / portTICK_RATE_MS));
-	}
-}
-
-
-
-
-void ScreenUpdateThread( void *args )
-{
-	// pass argument
-	xSemaphoreHandle screenUpdateEvent = (xSemaphoreHandle) args;
-
-	while (1)
-	{
-		// block until other task grant the permission drawing screen
-		xSemaphoreTake(screenUpdateEvent, portMAX_DELAY);
-
-		// mix three layers of framebuffer and display them on screen
-		ScreenUpdate();
 	}
 }
 

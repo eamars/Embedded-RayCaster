@@ -5,18 +5,39 @@
  *      Author: rba90
  */
 
+#include <string.h>
+#include <stdint.h>
 
+/* FreeRTOS includes. */
+#include "include/FreeRTOS.h"
+#include "include/task.h"
+#include "include/queue.h"
+#include "include/semphr.h"
+
+// modules
 #include "screen.h"
 #include "font_6x8.h"
 #include "font_8x16.h"
 #include "drivers/rit128x96x4.h"
 
-#include <string.h>
-#include <stdint.h>
-
 #define sign(x) ((x>0)?1:((x<0)?-1:0))
 
 static uint8_t framebuffer[3][6144];
+
+void ScreenUpdateThread( void *args )
+{
+	// pass argument
+	xSemaphoreHandle screenUpdateEvent = (xSemaphoreHandle) args;
+
+	while (1)
+	{
+		// block until other task grant the permission drawing screen
+		xSemaphoreTake(screenUpdateEvent, portMAX_DELAY);
+
+		// mix three layers of framebuffer and display them on screen
+		ScreenUpdate();
+	}
+}
 
 void ScreenClearFrameBuffer(uint8_t fb_idx)
 {
