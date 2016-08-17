@@ -142,10 +142,8 @@ int main( void ){
 
 	// create semaphore for screen update event
 	xSemaphoreHandle screenUpdateEvent;
-	xSemaphoreHandle serialUpdateEvent;
 	xQueueHandle buttonUpdateEventQueue;
 
-	vSemaphoreCreateBinary(serialUpdateEvent);
 	vSemaphoreCreateBinary(screenUpdateEvent);
 	buttonUpdateEventQueue = xQueueCreate(2, sizeof(uint8_t));
 
