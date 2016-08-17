@@ -42,14 +42,6 @@ typedef struct
 
 typedef struct
 {
-	float x;
-	float y;
-	uint8_t state;
-	uint8_t texture;
-} Sprite_t;
-
-typedef struct
-{
 	bool renderFog;
 	bool renderFloor;
 	bool enableSFX;
