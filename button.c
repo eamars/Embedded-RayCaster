@@ -85,6 +85,7 @@ void ButtonPoll( void *args )
 	// initialize the task tick handler
 	portTickType xLastWakeTime;
 
+	// sound
 	uint8_t sfx;
 
 	// initialize the task tick handler

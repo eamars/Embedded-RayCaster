@@ -161,7 +161,7 @@ int main( void ){
 	xTaskCreate(ScreenUpdateThread, "ScreenUpdateThread", 48, (void *) screenUpdateEvent, 2, NULL);
 	xTaskCreate(SFXPlayerThread, "SFXPlayerThread", 48, (void *) sfxEventQueue, 1, NULL);
 	xTaskCreate(ButtonPoll, "ButtonPoll", 96, (void *) &buttonThreadArgumentHandler, 4, NULL);
-	xTaskCreate(SerialHandlerThread, "SerialHandlerThread", 128, (void *) buttonUpdateEventQueue, 3, NULL);
+	xTaskCreate(SerialHandlerThread, "SerialHandlerThread", 128, (void *) &buttonThreadArgumentHandler, 3, NULL);
 
 	// initialize game settings
 	ConfigInit();

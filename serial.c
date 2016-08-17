@@ -31,6 +31,7 @@
 #include "serial.h"
 #include "screen.h"
 #include "button.h"
+#include "sfx.h"
 #include "raycaster.h"
 
 #define GPIO_PA0_U0RX	0x00000001
@@ -71,7 +72,10 @@ void SerialInit()
 void SerialHandlerThread(void *args)
 {
 	// pass parameters
-	xQueueHandle buttonUpdateEventQueue = (xQueueHandle) args;
+	ArgumentHandler *argumentHandler = (ArgumentHandler *) args;
+
+	xQueueHandle buttonUpdateEventQueue = (xQueueHandle) argumentHandler->arg0;
+	xSemaphoreHandle sfxEventQueue = (xSemaphoreHandle) argumentHandler->arg1;
 
 	// initialize the task tick handler
 	portTickType xLastWakeTime;
@@ -192,6 +196,13 @@ void SerialHandlerThread(void *args)
 						{
 							gameState = GAME_DEFEAT;
 							ScreenPrintStr(2, "You Lose!", 9, 27, 44, FONT_8x16, 15);
+						}
+
+						// play fire sound if necessary
+						if (otherPlayer.state == 0x01)
+						{
+							uint8_t sfx = SFX_FIRE | SFX_NORMAL;
+							xQueueSend(sfxEventQueue, &sfx, 0);
 						}
 
 						// pass a BUTTON_IDLE to update the screen
