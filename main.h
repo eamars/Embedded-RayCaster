@@ -43,7 +43,7 @@ typedef struct
 typedef struct
 {
 	bool renderFog;
-	bool renderFloor;
+	bool displayDebugText;
 	bool enableSFX;
 } Settings_t;
 

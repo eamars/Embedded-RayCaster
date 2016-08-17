@@ -13,7 +13,7 @@
 				</extensions>
 			</storageModule>
 			<storageModule moduleId="cdtBuildSystem" version="4.0.0">
-				<configuration artifactExtension="out" artifactName="${ProjName}" buildProperties="" cleanCommand="${CG_CLEAN_CMD}" description="" id="com.ti.ccstudio.buildDefinitions.TMS470.Debug.17774393" name="Debug" parent="com.ti.ccstudio.buildDefinitions.TMS470.Debug">
+				<configuration artifactExtension="out" artifactName="${ProjName}" buildProperties="" cleanCommand="${CG_CLEAN_CMD}" description="" id="com.ti.ccstudio.buildDefinitions.TMS470.Debug.17774393" name="Debug" parent="com.ti.ccstudio.buildDefinitions.TMS470.Debug" postbuildStep="">
 					<folderInfo id="com.ti.ccstudio.buildDefinitions.TMS470.Debug.17774393." name="/" resourcePath="">
 						<toolChain id="com.ti.ccstudio.buildDefinitions.TMS470_16.6.exe.DebugToolchain.1713844749" name="TI Build Tools" superClass="com.ti.ccstudio.buildDefinitions.TMS470_16.6.exe.DebugToolchain" targetTool="com.ti.ccstudio.buildDefinitions.TMS470_16.6.exe.linkerDebug.664600235">
 							<option id="com.ti.ccstudio.buildDefinitions.core.OPT_TAGS.176676036" superClass="com.ti.ccstudio.buildDefinitions.core.OPT_TAGS" valueType="stringList">
@@ -85,7 +85,10 @@
 								<inputType id="com.ti.ccstudio.buildDefinitions.TMS470_16.6.exeLinker.inputType__CMD2_SRCS.839173184" name="Linker Command Files" superClass="com.ti.ccstudio.buildDefinitions.TMS470_16.6.exeLinker.inputType__CMD2_SRCS"/>
 								<inputType id="com.ti.ccstudio.buildDefinitions.TMS470_16.6.exeLinker.inputType__GEN_CMDS.832764258" name="Generated Linker Command Files" superClass="com.ti.ccstudio.buildDefinitions.TMS470_16.6.exeLinker.inputType__GEN_CMDS"/>
 							</tool>
-							<tool id="com.ti.ccstudio.buildDefinitions.TMS470_16.6.hex.534792499" name="ARM Hex Utility" superClass="com.ti.ccstudio.buildDefinitions.TMS470_16.6.hex"/>
+							<tool id="com.ti.ccstudio.buildDefinitions.TMS470_16.6.hex.534792499" name="ARM Hex Utility" superClass="com.ti.ccstudio.buildDefinitions.TMS470_16.6.hex">
+								<option id="com.ti.ccstudio.buildDefinitions.TMS470_16.6.hex.TOOL_ENABLE.269750846" name="Enable tool" superClass="com.ti.ccstudio.buildDefinitions.TMS470_16.6.hex.TOOL_ENABLE" value="false" valueType="boolean"/>
+								<option id="com.ti.ccstudio.buildDefinitions.TMS470_16.6.hex.OUTPUT_FORMAT.1147650413" name="Output format" superClass="com.ti.ccstudio.buildDefinitions.TMS470_16.6.hex.OUTPUT_FORMAT" value="com.ti.ccstudio.buildDefinitions.TMS470_16.6.hex.OUTPUT_FORMAT.TI_TXT" valueType="enumerated"/>
+							</tool>
 						</toolChain>
 					</folderInfo>
 				</configuration>

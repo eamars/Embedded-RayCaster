@@ -76,6 +76,9 @@ Player_t otherPlayer;
 Settings_t gameSettings;
 uint8_t gameState = GAME_WAIT_FOR_OTHER_PLAYER;
 
+// testing
+
+
 
 void PinReset()
 {
@@ -116,6 +119,7 @@ void ConfigInit()
 	// game settings
 	gameSettings.renderFog = true;
 	gameSettings.enableSFX = true;
+	gameSettings.displayDebugText = false;
 
 	// display text at fb2 when waiting for other player
 	ScreenPrintStr(2, "Waiting for players", 24, 10, 44, FONT_6x8, 15);
@@ -595,34 +599,37 @@ void RayCaster(void *args)
 		sprintf(textBuffer, "FPS:%d", 1000 / frameTime);
 		ScreenPrintStr(1, textBuffer, strlen(textBuffer), 0, 0, FONT_6x8, 15);
 
-		// position
-		sprintf(textBuffer, "X:%d Y:%d DI:(%d,%d)", (int)currentPlayer.posX, (int)currentPlayer.posY, (int)(currentPlayer.dirX * RAD_TO_DEG_RATIO),  (int)(currentPlayer.dirY * RAD_TO_DEG_RATIO));
-		ScreenPrintStr(1, textBuffer, strlen(textBuffer), 0, 88, FONT_6x8, 15);
-
-		sprintf(textBuffer, "X:%d Y:%d DI:(%d,%d)", (int)otherPlayer.posX, (int)otherPlayer.posY, (int)(otherPlayer.dirX * RAD_TO_DEG_RATIO),  (int)(otherPlayer.dirY * RAD_TO_DEG_RATIO));
-		ScreenPrintStr(1, textBuffer, strlen(textBuffer), 0, 80, FONT_6x8, 15);
-
-		// user pressed fire button
-		if (drawFire)
+		// debug text
+		if (gameSettings.displayDebugText)
 		{
-			sprintf(textBuffer, "F");
-			ScreenPrintStr(1, textBuffer, 1, 0, 72, FONT_6x8, 15);
-			drawFire = false;
-		}
-		else{
-			sprintf(textBuffer, "H");
-			ScreenPrintStr(1, textBuffer, 1, 0, 72, FONT_6x8, 15);
-		}
+			sprintf(textBuffer, "X:%d Y:%d DI:(%d,%d)", (int)currentPlayer.posX, (int)currentPlayer.posY, (int)(currentPlayer.dirX * RAD_TO_DEG_RATIO),  (int)(currentPlayer.dirY * RAD_TO_DEG_RATIO));
+			ScreenPrintStr(1, textBuffer, strlen(textBuffer), 0, 88, FONT_6x8, 15);
 
-		// other player pressed fire button
-		if (otherPlayer.state == 0x01)
-		{
-			sprintf(textBuffer, "F");
-			ScreenPrintStr(1, textBuffer, 1, 6, 72, FONT_6x8, 15);
-		}
-		else{
-			sprintf(textBuffer, "H");
-			ScreenPrintStr(1, textBuffer, 1, 6, 72, FONT_6x8, 15);
+			sprintf(textBuffer, "X:%d Y:%d DI:(%d,%d)", (int)otherPlayer.posX, (int)otherPlayer.posY, (int)(otherPlayer.dirX * RAD_TO_DEG_RATIO),  (int)(otherPlayer.dirY * RAD_TO_DEG_RATIO));
+			ScreenPrintStr(1, textBuffer, strlen(textBuffer), 0, 80, FONT_6x8, 15);
+
+			// user pressed fire button
+			if (drawFire)
+			{
+				sprintf(textBuffer, "F");
+				ScreenPrintStr(1, textBuffer, 1, 0, 72, FONT_6x8, 15);
+				drawFire = false;
+			}
+			else{
+				sprintf(textBuffer, "H");
+				ScreenPrintStr(1, textBuffer, 1, 0, 72, FONT_6x8, 15);
+			}
+
+			// other player pressed fire button
+			if (otherPlayer.state == 0x01)
+			{
+				sprintf(textBuffer, "F");
+				ScreenPrintStr(1, textBuffer, 1, 6, 72, FONT_6x8, 15);
+			}
+			else{
+				sprintf(textBuffer, "H");
+				ScreenPrintStr(1, textBuffer, 1, 6, 72, FONT_6x8, 15);
+			}
 		}
 
 		// we don't care if we successfully give the semaphore or not since we only need to
