@@ -20,7 +20,10 @@ enum sfx_flags
 	SFX_NORMAL = 0x40,		// 0b0100xxxx
 };
 
+// initialize Class-D driver
 void SFXInit(unsigned long clock);
+
+// SFX handler thread that play tune on request
 void SFXPlayerThread( void *args );
 
 
