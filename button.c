@@ -123,8 +123,8 @@ void ButtonPoll( void *args )
 		{
 			case 0x0e:	// up
 			{
-				// at state 0, the player is not allowed to move back and forward
-				if (gameState == GAME_WAIT_FOR_OTHER_PLAYER)
+				// player is allowed to move only in GAME_FREE_ROAM state
+				if (gameState != GAME_FREE_ROAM)
 				{
 					break;
 				}
@@ -160,8 +160,8 @@ void ButtonPoll( void *args )
 			}
 			case 0x0d: 	// down
 			{
-				// at state 0, the player is not allowed to move back and forward
-				if (gameState == GAME_WAIT_FOR_OTHER_PLAYER)
+				// player is allowed to move only in GAME_FREE_ROAM state
+				if (gameState != GAME_FREE_ROAM)
 				{
 					break;
 				}
@@ -229,18 +229,22 @@ void ButtonPoll( void *args )
 		// select
 		if((ulDelta & 0x10) && !(g_ucSwitches & 0x10))
 		{
-			if (gameSettings.enableSFX)
+			// player is allowed to shoot only in GAME_FREE_ROAM state
+			if (gameState == GAME_FREE_ROAM)
 			{
-				// play sound
-				sfx = SFX_FIRE | SFX_PREEMPT;
-				xQueueSend(sfxEventQueue, &sfx, 0);
+				if (gameSettings.enableSFX)
+				{
+					// play sound
+					sfx = SFX_FIRE | SFX_PREEMPT;
+					xQueueSend(sfxEventQueue, &sfx, 0);
+				}
+
+				// toggle fire state
+				currentPlayer.state = 0x01;
+
+				// register button event
+				button_type = BUTTON_SELECT;
 			}
-
-			// toggle fire state
-			currentPlayer.state = 0x01;
-
-			// register button event
-			button_type = BUTTON_SELECT;
 		}
 
 		// pass update event to main thread

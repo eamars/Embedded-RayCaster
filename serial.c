@@ -192,9 +192,6 @@ void SerialHandlerThread(void *args)
 						{
 							gameState = GAME_DEFEAT;
 							ScreenPrintStr(2, "You Lose!", 9, 27, 44, FONT_6x8, 15);
-
-							// TODO: Find a better way
-							ScreenUpdate();
 						}
 
 						// pass a BUTTON_IDLE to update the screen

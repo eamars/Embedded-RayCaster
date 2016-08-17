@@ -119,7 +119,7 @@ void ConfigInit()
 
 	// game settings
 	gameSettings.renderFog = true;
-	gameSettings.enableSFX = false;
+	gameSettings.enableSFX = true;
 
 	// display text at fb2 when waiting for other player
 	ScreenPrintStr(2, "Waiting for players", 24, 10, 44, FONT_6x8, 15);
@@ -264,7 +264,7 @@ void RayCaster(void *args)
 
 	while (1)
 	{
-		ScreenPaintWithBackground(1, 0x43, 0x01);
+		ScreenPaintWithBackground(1, 0x53, 0x01);
 
 		for (x = 0; x < screenWidth; x++)
 		{
@@ -450,7 +450,6 @@ void RayCaster(void *args)
 					ScreenPrintStr(2, "You Win!", 8, 30, 44, FONT_6x8, 15);
 
 					// TODO: Find a better way
-					xSemaphoreGive(screenUpdateEvent);
 				}
 
 			}
