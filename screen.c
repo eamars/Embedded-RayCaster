@@ -48,7 +48,6 @@ void ScreenPaintWithBackground(uint8_t fb_idx, uint8_t color1, uint8_t color2)
 {
 	memset(framebuffer[fb_idx], color1, sizeof(framebuffer[fb_idx]) / 2);
 	memset(framebuffer[fb_idx] + sizeof(framebuffer[fb_idx]) / 2, color2, sizeof(framebuffer[fb_idx]) / 2);
-
 }
 
 bool ScreenSetPixel(uint8_t fb_idx, uint8_t cx, uint8_t cy, uint8_t level)

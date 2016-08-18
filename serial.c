@@ -75,7 +75,7 @@ void SerialHandlerThread(void *args)
 	ArgumentHandler *argumentHandler = (ArgumentHandler *) args;
 
 	xQueueHandle buttonUpdateEventQueue = (xQueueHandle) argumentHandler->arg0;
-	xSemaphoreHandle sfxEventQueue = (xSemaphoreHandle) argumentHandler->arg1;
+	xQueueHandle sfxEventQueue = (xQueueHandle) argumentHandler->arg1;
 
 	// initialize the task tick handler
 	portTickType xLastWakeTime;
