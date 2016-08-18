@@ -613,7 +613,6 @@ void RayCaster(void *args)
 			{
 				sprintf(textBuffer, "F");
 				ScreenPrintStr(1, textBuffer, 1, 0, 72, FONT_6x8, 15);
-				drawFire = false;
 			}
 			else{
 				sprintf(textBuffer, "H");
@@ -631,6 +630,9 @@ void RayCaster(void *args)
 				ScreenPrintStr(1, textBuffer, 1, 6, 72, FONT_6x8, 15);
 			}
 		}
+
+		// toggle the fire state
+		drawFire = false;
 
 		// we don't care if we successfully give the semaphore or not since we only need to
 		// update the screen once no matter how many write operations applied to the screen
