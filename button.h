@@ -20,10 +20,8 @@ enum button_type {
 	BUTTON_LEFT,
 	BUTTON_RIGHT,
 	BUTTON_SELECT,
-	BUTTON_IDLE
+	BUTTON_IDLE,
 };
-
-extern uint8_t BUTTON_EVENT;
 
 void ButtonPollingInit();
 void ButtonPoll( void *args );
