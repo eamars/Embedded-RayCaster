@@ -17,11 +17,6 @@ typedef enum
 	FONT_8x16
 } Font_t;
 
-typedef struct
-{
-	uint8_t x, y;
-} Point_t;
-
 // update screen on request
 void ScreenUpdateThread( void *args );
 
