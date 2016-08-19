@@ -3,6 +3,18 @@
  *
  *  Created on: 13/08/2016
  *      Author: rba90
+ *
+ *  Purpose:
+ *  	Play tune based on Class-D driver
+ *
+ *  Scheduled task function:
+ *  	void SFXPlayerThread(void *args);
+ *
+ *  Dependencies:
+ *  	ButtonPolling(), SerialHandlerThread()
+ *
+ *  Shared Variables:
+ *  	None
  */
 
 #ifndef SFX_H_
@@ -10,8 +22,8 @@
 
 enum sfx_type
 {
-	SFX_FIRE = 0x0,			// 0bxxxx0000
-	SFX_WALL = 0x1,			// 0bxxxx0001
+	SFX_FIRE = 0x00,			// 0bxxxx0000
+	SFX_WALL = 0x01,			// 0bxxxx0001
 };
 
 enum sfx_flags
@@ -24,6 +36,8 @@ enum sfx_flags
 void SFXInit(unsigned long clock);
 
 // SFX handler thread that play tune on request
+// args:
+// 		sfxEventQueue
 void SFXPlayerThread( void *args );
 
 

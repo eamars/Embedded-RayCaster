@@ -3,6 +3,19 @@
  *
  *  Created on: 28/07/2016
  *      Author: rba90
+ *
+ *  Purpose:
+ *  	Friendly peripherals that accessing pixels in framebuffer. The module provides many pre-defined feature for
+ *  	drawing shapes and printing texts
+ *
+ *  Scheduled task function:
+ *  	void ScreenUpdateThread(void *args);
+ *
+ *  Dependencies:
+ *  	RayCaster()
+ *
+ *  Shared Variables:
+ *  	None
  */
 
 #ifndef SCREEN_H_
@@ -18,6 +31,8 @@ typedef enum
 } Font_t;
 
 // update screen on request
+// args:
+// 		screenUpdateEvent
 void ScreenUpdateThread( void *args );
 
 // initialize the screen driver
